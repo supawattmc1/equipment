@@ -889,69 +889,31 @@
 
     searchInput.addEventListener("input", renderRecords);
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
+    // นำ URL ที่ได้จากขั้นตอนที่ 3 มาวางในเครื่องหมายคำพูดด้านล่าง
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzkazUtmBE7O40-Gr95XKZkBmhxMS4g1oOeVOr-95jTUI3fxGFgcJtfp9GNqb4cEd4/exec'; 
 
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        setStatus(formStatus, "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน", "error");
-        return;
-      }
+// สมมติว่านี่คือข้อมูลที่คุณดึงมาจากฟอร์มหน้าเว็บ
+const itemData = {
+  name: 'คอมพิวเตอร์',
+  quantity: 5,
+  status: 'พร้อมใช้งาน'
+};
 
-      if (state.records.length >= 999 && !state.editingId) {
-        setStatus(formStatus, "มีรายการครบจำนวนสูงสุด 999 รายการแล้ว กรุณาลบรายการเดิมก่อนบันทึกเพิ่ม", "error");
-        return;
-      }
-
-      setSaving(true);
-      setStatus(formStatus, "กำลังบันทึกข้อมูลตรวจนับ...", "neutral");
-
-      const good = Number(inputs.goodQty.value || 0);
-      const damaged = Number(inputs.damagedQty.value || 0);
-
-      const record = {
-        department: inputs.department.value.trim(),
-        asset_code: inputs.assetCode.value.trim(),
-        asset_name: inputs.assetName.value.trim(),
-        category: inputs.category.value.trim(),
-        brand_model: inputs.brandModel.value.trim(),
-        location: inputs.location.value.trim(),
-        condition: inputs.condition.value,
-        inspection_result: inputs.inspectionResult.value,
-        
-        good_qty: good,
-        damaged_qty: damaged,
-        actual_qty: good + damaged,
-        
-        responsible_person: inputs.responsiblePerson.value.trim(),
-        inspector: inputs.inspector.value.trim(),
-        inspection_date: toIsoDate(inputs.inspectionDate.value),
-        acquisition_date: toIsoDate(inputs.acquisitionDate.value),
-        related_remarks: inputs.relatedRemarks.value.trim(),
-        remarks: inputs.remarks.value.trim()
-      };
-
-      try {
-        const editingRecord = state.editingId
-          ? state.records.find((item) => item.__backendId === state.editingId)
-          : null;
-        
-        const result = editingRecord
-          ? await window.dataSdk.update({ ...editingRecord, ...record })
-          : await window.dataSdk.create(record);
-          
-        if (result.isOk) {
-          resetForm();
-          setStatus(formStatus, editingRecord ? "แก้ไขข้อมูลและบันทึกทับรายการเดิมเรียบร้อยแล้ว" : "บันทึกข้อมูลตรวจนับเรียบร้อยแล้ว", "success");
-        } else {
-          setStatus(formStatus, "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองอีกครั้ง", "error");
-        }
-      } catch (error) {
-        setStatus(formStatus, "ไม่สามารถเชื่อมต่อเพื่อบันทึกข้อมูลได้", "error");
-      } finally {
-        setSaving(false);
-      }
-    });
+// ฟังก์ชันสำหรับส่งข้อมูลไป Google Sheets
+fetch(SCRIPT_URL, {
+  method: 'POST',
+  body: JSON.stringify(itemData) // แปลงข้อมูลให้เป็นข้อความก่อนส่ง
+})
+.then(response => response.text())
+.then(result => {
+  if (result === 'Success') {
+    alert('บันทึกข้อมูลลง Google Sheets สำเร็จแล้ว!');
+  }
+})
+.catch(error => {
+  console.error('เกิดข้อผิดพลาด:', error);
+  alert('ไม่สามารถบันทึกข้อมูลได้');
+});
 
     const dataHandler = {
       onDataChanged(data) {
