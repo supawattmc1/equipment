@@ -890,7 +890,7 @@
     searchInput.addEventListener("input", renderRecords);
 
     // นำ URL ที่ได้จากขั้นตอนที่ 3 มาวางในเครื่องหมายคำพูดด้านล่าง
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzkazUtmBE7O40-Gr95XKZkBmhxMS4g1oOeVOr-95jTUI3fxGFgcJtfp9GNqb4cEd4/exec'; 
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtkIWe6F6-LIW6SyIHWkD6lylrXTBj7vhoIMVjw_66GWyHVArER9IZcau1iefn6rzq/exec'; 
 
 // สมมติว่านี่คือข้อมูลที่คุณดึงมาจากฟอร์มหน้าเว็บ
 const itemData = {
@@ -941,6 +941,40 @@ fetch(SCRIPT_URL, {
     }
 
     document.addEventListener("DOMContentLoaded", initializeApp);
+  </script>
+<script>
+    // ⚠️ อย่าลืมเอาลิงก์ URL ที่ก็อปปี้มา วางแทนข้อความภาษาไทยด้านล่างนี้นะครับ
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtkIWe6F6-LIW6SyIHWkD6lylrXTBj7vhoIMVjw_66GWyHVArER9IZcau1iefn6rzq/exec'; 
+
+    const form = document.getElementById('equipmentForm');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault(); // ป้องกันไม่ให้หน้าเว็บรีเฟรชตอนกดปุ่ม
+
+      // ดึงข้อมูลจากช่องกรอกข้อความมาเก็บไว้
+      const itemData = {
+        name: document.getElementById('nameInput').value,
+        quantity: document.getElementById('qtyInput').value,
+        status: document.getElementById('statusInput').value
+      };
+
+      // ส่งข้อมูลไปที่ Google Sheets
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(itemData)
+      })
+      .then(response => response.text())
+      .then(result => {
+        if (result === 'Success') {
+          alert('บันทึกข้อมูลลง Google Sheets สำเร็จแล้ว!');
+          form.reset(); // ล้างช่องกรอกข้อมูลให้ว่างเพื่อเตรียมกรอกใหม่
+        }
+      })
+      .catch(error => {
+        console.error('เกิดข้อผิดพลาด:', error);
+        alert('ไม่สามารถบันทึกข้อมูลได้');
+      });
+    });
   </script>
 </body>
 </html>
