@@ -415,6 +415,7 @@
   </template>
 
   <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4O_jFwT9vECgefHiH8K-z2-3bOHeW-wP99mXqTBtuWPTdzm68pxDoXhedqnRowd25/exec';
     // ----------------------------------------------------
     // MOCK DATA SDK (ปรับปรุงเพื่อรองรับ History)
     // ----------------------------------------------------
@@ -427,13 +428,26 @@
         return { isOk: true };
       },
       async create(record) {
-        return new Promise(resolve => setTimeout(() => {
-          record.__backendId = String(this.mockId++);
-          record.history = []; // กำหนด array ว่างสำหรับประวัติเมื่อสร้างใหม่
-          this.mockData.unshift(record);
-          this.handler.onDataChanged(this.mockData);
-          resolve({ isOk: true });
-        }, 500));
+        // 1. บันทึกลงในหน้าเว็บชั่วคราว
+        record.__backendId = String(this.mockId++);
+        record.history = [];
+        this.mockData.unshift(record);
+        this.handler.onDataChanged(this.mockData);
+
+        // 2. ส่งข้อมูลไปบันทึกลง Google Sheets
+        if (SCRIPT_URL && !SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
+          try {
+            fetch(SCRIPT_URL, {
+              method: 'POST',
+              mode: 'no-cors', // ป้องกันติดปัญหา CORS บนเบราว์เซอร์
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(record)
+            });
+          } catch (err) {
+            console.error('เกิดข้อผิดพลาดในการส่งลง Google Sheets:', err);
+          }
+        }
+        return { isOk: true };
       },
       async update(record) {
         return new Promise(resolve => setTimeout(() => {
@@ -890,7 +904,7 @@
     searchInput.addEventListener("input", renderRecords);
 
     // นำ URL ที่ได้จากขั้นตอนที่ 3 มาวางในเครื่องหมายคำพูดด้านล่าง
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtkIWe6F6-LIW6SyIHWkD6lylrXTBj7vhoIMVjw_66GWyHVArER9IZcau1iefn6rzq/exec'; 
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4O_jFwT9vECgefHiH8K-z2-3bOHeW-wP99mXqTBtuWPTdzm68pxDoXhedqnRowd25/exec'; 
 
 // สมมติว่านี่คือข้อมูลที่คุณดึงมาจากฟอร์มหน้าเว็บ
 const itemData = {
@@ -944,7 +958,7 @@ fetch(SCRIPT_URL, {
   </script>
 <script>
     // ⚠️ อย่าลืมเอาลิงก์ URL ที่ก็อปปี้มา วางแทนข้อความภาษาไทยด้านล่างนี้นะครับ
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtkIWe6F6-LIW6SyIHWkD6lylrXTBj7vhoIMVjw_66GWyHVArER9IZcau1iefn6rzq/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4O_jFwT9vECgefHiH8K-z2-3bOHeW-wP99mXqTBtuWPTdzm68pxDoXhedqnRowd25/exec'; 
 
     const form = document.getElementById('equipmentForm');
 
