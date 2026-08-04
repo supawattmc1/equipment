@@ -415,55 +415,56 @@
   </template>
 
   <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4O_jFwT9vECgefHiH8K-z2-3bOHeW-wP99mXqTBtuWPTdzm68pxDoXhedqnRowd25/exec';
     // ----------------------------------------------------
-    // MOCK DATA SDK (ปรับปรุงเพื่อรองรับ History)
+    // MOCK DATA SDK (ปรับปรุงเพื่อรองรับ LocalStorage)
     // ----------------------------------------------------
     window.dataSdk = {
       mockData: [],
       mockId: 1,
+      _saveToLocalStorage() {
+        localStorage.setItem('assetInventoryData', JSON.stringify(this.mockData));
+        localStorage.setItem('assetInventoryMockId', this.mockId);
+      },
+      _loadFromLocalStorage() {
+        const savedData = localStorage.getItem('assetInventoryData');
+        const savedId = localStorage.getItem('assetInventoryMockId');
+        if (savedData) {
+          this.mockData = JSON.parse(savedData);
+        }
+        if (savedId) {
+          this.mockId = parseInt(savedId, 10);
+        }
+      },
       async init(handler) {
         this.handler = handler;
+        this._loadFromLocalStorage(); // โหลดข้อมูลที่เคยบันทึกไว้
         setTimeout(() => this.handler.onDataChanged(this.mockData), 300);
         return { isOk: true };
       },
       async create(record) {
-        // 1. บันทึกลงในหน้าเว็บชั่วคราว
-        record.__backendId = String(this.mockId++);
-        record.history = [];
-        this.mockData.unshift(record);
-        this.handler.onDataChanged(this.mockData);
-
-        // 2. ส่งข้อมูลไปบันทึกลง Google Sheets
-        if (SCRIPT_URL && !SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
-          try {
-            fetch(SCRIPT_URL, {
-              method: 'POST',
-              mode: 'no-cors', // ป้องกันติดปัญหา CORS บนเบราว์เซอร์
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(record)
-            });
-          } catch (err) {
-            console.error('เกิดข้อผิดพลาดในการส่งลง Google Sheets:', err);
-          }
-        }
-        return { isOk: true };
+        return new Promise(resolve => setTimeout(() => {
+          record.__backendId = String(this.mockId++);
+          record.history = []; 
+          this.mockData.unshift(record);
+          this._saveToLocalStorage(); // เซฟลงเบราว์เซอร์
+          this.handler.onDataChanged(this.mockData);
+          resolve({ isOk: true });
+        }, 500));
       },
       async update(record) {
         return new Promise(resolve => setTimeout(() => {
           const idx = this.mockData.findIndex(r => r.__backendId === record.__backendId);
           if (idx > -1) {
             const oldRecord = this.mockData[idx];
-            // จัดเก็บ History ก่อนถูกเขียนทับ
             const currentHistory = oldRecord.history || [];
             
-            // สร้าง snapshot เพื่อเก็บข้อมูลเก่า (เอา history ออกเพื่อไม่ให้ซ้อนกันเรื่อยๆ)
             const snapshot = { ...oldRecord };
             delete snapshot.history;
-            snapshot.__editedAt = new Date().toISOString(); // เพิ่มเวลาแก้ไข
+            snapshot.__editedAt = new Date().toISOString(); 
 
-            record.history = [...currentHistory, snapshot]; // แนบประวัติเก่า + ที่เพิ่งแก้ กลับเข้าไป
+            record.history = [...currentHistory, snapshot]; 
             this.mockData[idx] = record;
+            this._saveToLocalStorage(); // เซฟลงเบราว์เซอร์
           }
           this.handler.onDataChanged(this.mockData);
           resolve({ isOk: true });
@@ -472,6 +473,7 @@
       async delete(record) {
         return new Promise(resolve => setTimeout(() => {
           this.mockData = this.mockData.filter(r => r.__backendId !== record.__backendId);
+          this._saveToLocalStorage(); // เซฟลงเบราว์เซอร์
           this.handler.onDataChanged(this.mockData);
           resolve({ isOk: true });
         }, 500));
@@ -903,31 +905,69 @@
 
     searchInput.addEventListener("input", renderRecords);
 
-    // นำ URL ที่ได้จากขั้นตอนที่ 3 มาวางในเครื่องหมายคำพูดด้านล่าง
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4O_jFwT9vECgefHiH8K-z2-3bOHeW-wP99mXqTBtuWPTdzm68pxDoXhedqnRowd25/exec'; 
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
 
-// สมมติว่านี่คือข้อมูลที่คุณดึงมาจากฟอร์มหน้าเว็บ
-const itemData = {
-  name: '',
-  quantity: ,
-  status: ''
-};
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        setStatus(formStatus, "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน", "error");
+        return;
+      }
 
-// ฟังก์ชันสำหรับส่งข้อมูลไป Google Sheets
-fetch(SCRIPT_URL, {
-  method: 'POST',
-  body: JSON.stringify(itemData) // แปลงข้อมูลให้เป็นข้อความก่อนส่ง
-})
-.then(response => response.text())
-.then(result => {
-  if (result === 'Success') {
-    alert('บันทึกข้อมูลลง Google Sheets สำเร็จแล้ว!');
-  }
-})
-.catch(error => {
-  console.error('เกิดข้อผิดพลาด:', error);
-  alert('ไม่สามารถบันทึกข้อมูลได้');
-});
+      if (state.records.length >= 999 && !state.editingId) {
+        setStatus(formStatus, "มีรายการครบจำนวนสูงสุด 999 รายการแล้ว กรุณาลบรายการเดิมก่อนบันทึกเพิ่ม", "error");
+        return;
+      }
+
+      setSaving(true);
+      setStatus(formStatus, "กำลังบันทึกข้อมูลตรวจนับ...", "neutral");
+
+      const good = Number(inputs.goodQty.value || 0);
+      const damaged = Number(inputs.damagedQty.value || 0);
+
+      const record = {
+        department: inputs.department.value.trim(),
+        asset_code: inputs.assetCode.value.trim(),
+        asset_name: inputs.assetName.value.trim(),
+        category: inputs.category.value.trim(),
+        brand_model: inputs.brandModel.value.trim(),
+        location: inputs.location.value.trim(),
+        condition: inputs.condition.value,
+        inspection_result: inputs.inspectionResult.value,
+        
+        good_qty: good,
+        damaged_qty: damaged,
+        actual_qty: good + damaged,
+        
+        responsible_person: inputs.responsiblePerson.value.trim(),
+        inspector: inputs.inspector.value.trim(),
+        inspection_date: toIsoDate(inputs.inspectionDate.value),
+        acquisition_date: toIsoDate(inputs.acquisitionDate.value),
+        related_remarks: inputs.relatedRemarks.value.trim(),
+        remarks: inputs.remarks.value.trim()
+      };
+
+      try {
+        const editingRecord = state.editingId
+          ? state.records.find((item) => item.__backendId === state.editingId)
+          : null;
+        
+        const result = editingRecord
+          ? await window.dataSdk.update({ ...editingRecord, ...record })
+          : await window.dataSdk.create(record);
+          
+        if (result.isOk) {
+          resetForm();
+          setStatus(formStatus, editingRecord ? "แก้ไขข้อมูลและบันทึกทับรายการเดิมเรียบร้อยแล้ว" : "บันทึกข้อมูลตรวจนับเรียบร้อยแล้ว", "success");
+        } else {
+          setStatus(formStatus, "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองอีกครั้ง", "error");
+        }
+      } catch (error) {
+        setStatus(formStatus, "ไม่สามารถเชื่อมต่อเพื่อบันทึกข้อมูลได้", "error");
+      } finally {
+        setSaving(false);
+      }
+    });
 
     const dataHandler = {
       onDataChanged(data) {
@@ -955,40 +995,6 @@ fetch(SCRIPT_URL, {
     }
 
     document.addEventListener("DOMContentLoaded", initializeApp);
-  </script>
-<script>
-    // ⚠️ อย่าลืมเอาลิงก์ URL ที่ก็อปปี้มา วางแทนข้อความภาษาไทยด้านล่างนี้นะครับ
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4O_jFwT9vECgefHiH8K-z2-3bOHeW-wP99mXqTBtuWPTdzm68pxDoXhedqnRowd25/exec'; 
-
-    const form = document.getElementById('equipmentForm');
-
-    form.addEventListener('submit', function(e) {
-      e.preventDefault(); // ป้องกันไม่ให้หน้าเว็บรีเฟรชตอนกดปุ่ม
-
-      // ดึงข้อมูลจากช่องกรอกข้อความมาเก็บไว้
-      const itemData = {
-        name: document.getElementById('nameInput').value,
-        quantity: document.getElementById('qtyInput').value,
-        status: document.getElementById('statusInput').value
-      };
-
-      // ส่งข้อมูลไปที่ Google Sheets
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify(itemData)
-      })
-      .then(response => response.text())
-      .then(result => {
-        if (result === 'Success') {
-          alert('บันทึกข้อมูลลง Google Sheets สำเร็จแล้ว!');
-          form.reset(); // ล้างช่องกรอกข้อมูลให้ว่างเพื่อเตรียมกรอกใหม่
-        }
-      })
-      .catch(error => {
-        console.error('เกิดข้อผิดพลาด:', error);
-        alert('ไม่สามารถบันทึกข้อมูลได้');
-      });
-    });
   </script>
 </body>
 </html>
