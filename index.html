@@ -942,5 +942,57 @@ fetch(SCRIPT_URL, {
 
     document.addEventListener("DOMContentLoaded", initializeApp);
   </script>
+
+  <!-- 1. ส่วนนี้คือฟอร์มกรอกข้อมูลของคุณ (สมมติว่าคุณมีฟอร์มหน้าตาประมาณนี้) -->
+  <form id="equipmentForm">
+    <label>ชื่ออุปกรณ์:</label>
+    <input type="text" id="nameInput" required><br><br>
+    
+    <label>จำนวน:</label>
+    <input type="number" id="qtyInput" required><br><br>
+    
+    <label>สถานะ:</label>
+    <input type="text" id="statusInput" required><br><br>
+    
+    <button type="submit">บันทึกข้อมูล</button>
+  </form>
+
+  <!-- ========================================== -->
+  <!-- 2. เอาโค้ดขั้นตอนที่ 4 มาใส่ตรงนี้ (อยู่ในแท็ก script) -->
+  <!-- ========================================== -->
+  <script>
+    // ⚠️ อย่าลืมเอาลิงก์ URL ที่ก็อปปี้มา วางแทนข้อความภาษาไทยด้านล่างนี้นะครับ
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzp5iLoNu4cuc2WX9gMbm_devQ0ENy3CgOaV8mN8tUn9RFOVEy_FAyg6Dph-96rmUGk/exec'; 
+
+    const form = document.getElementById('equipmentForm');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault(); // ป้องกันไม่ให้หน้าเว็บรีเฟรชตอนกดปุ่ม
+
+      // ดึงข้อมูลจากช่องกรอกข้อความมาเก็บไว้
+      const itemData = {
+        name: document.getElementById('nameInput').value,
+        quantity: document.getElementById('qtyInput').value,
+        status: document.getElementById('statusInput').value
+      };
+
+      // ส่งข้อมูลไปที่ Google Sheets
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(itemData)
+      })
+      .then(response => response.text())
+      .then(result => {
+        if (result === 'Success') {
+          alert('บันทึกข้อมูลลง Google Sheets สำเร็จแล้ว!');
+          form.reset(); // ล้างช่องกรอกข้อมูลให้ว่างเพื่อเตรียมกรอกใหม่
+        }
+      })
+      .catch(error => {
+        console.error('เกิดข้อผิดพลาด:', error);
+        alert('ไม่สามารถบันทึกข้อมูลได้');
+      });
+    });
+  </script>
 </body>
 </html>
