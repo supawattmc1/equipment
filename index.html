@@ -221,8 +221,8 @@
               </div>
               <div class="hidden xl:block"></div> <!-- Spacer for layout -->
               
-              <!-- ช่องใส่ตัวเลข (จำนวนปกติ, ชำรุด, รวมทั้งหมด, ส่วนต่าง) -->
-              <div><label class="canva-text field-label" for="good-qty">จำนวนปกติ</label> <input id="good-qty" class="field-control" type="number" min="0" step="1" value="1" required></div>
+              <!-- ช่องใส่ตัวเลข (จำนวนที่ตรวจนับ, ชำรุด, รวมทั้งหมด, ส่วนต่าง) -->
+              <div><label class="canva-text field-label" for="good-qty">จำนวนที่ตรวจนับ</label> <input id="good-qty" class="field-control" type="number" min="0" step="1" value="1" required></div>
               <div><label class="canva-text field-label" for="damaged-qty">จำนวนที่ชำรุด</label> <input id="damaged-qty" class="field-control" type="number" min="0" step="1" value="0" required></div>
               <div>
                 <label class="canva-text field-label" for="total-qty">รวมนับได้ (อัตโนมัติ)</label> 
@@ -296,7 +296,7 @@
                   <th class="px-4 py-3 font-bold text-slate-500">ตามระบบ</th>
                   <th class="px-4 py-3 font-bold text-teal-800">นับได้</th>
                   <th class="px-4 py-3 font-bold">ส่วนต่าง</th>
-                  <th class="px-4 py-3 font-bold">จำนวนปกติ</th>
+                  <th class="px-4 py-3 font-bold">จำนวนที่ตรวจนับ</th>
                   <th class="px-4 py-3 font-bold">จำนวนชำรุด</th>
                   <th class="px-4 py-3 font-bold">วันที่ตรวจ</th>
                   <th class="px-4 py-3 font-bold rounded-tr-xl">จัดการ</th>
@@ -354,7 +354,7 @@
             <div><span class="block text-slate-500 text-xs mb-1">ส่วนต่าง</span><strong id="v-diff" class="text-lg"></strong></div>
             <div></div> <!-- spacer -->
 
-            <div><span class="block text-slate-500 text-xs mb-1">จำนวนปกติ</span><strong id="v-good" class="text-emerald-700"></strong></div>
+            <div><span class="block text-slate-500 text-xs mb-1">จำนวนที่ตรวจนับ</span><strong id="v-good" class="text-emerald-700"></strong></div>
             <div><span class="block text-slate-500 text-xs mb-1">จำนวนชำรุด</span><strong id="v-damaged" class="text-red-700"></strong></div>
             
             <div class="col-span-2 md:col-span-4"><span class="block text-slate-500 text-xs mb-1">หมายเหตุ</span><p id="v-remarks" class="text-teal-900 bg-slate-50 p-3 rounded-lg border border-slate-100"></p></div>
