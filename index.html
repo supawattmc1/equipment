@@ -196,7 +196,7 @@
 
           <section class="mt-8 pt-7 border-t border-dashed border-teal-900/20" aria-labelledby="count-info-heading">
             <h3 id="count-info-heading" class="canva-text section-title font-bold border-l-4 border-teal-700 pl-3">ข้อมูลการตรวจนับ</h3>
-            <div class="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div class="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
               <div>
                 <label class="canva-text field-label" for="condition">สภาพ</label> 
                 <select id="condition" class="field-control" required> 
@@ -215,25 +215,16 @@
                   <option value="ไม่พบ">ไม่พบ</option> 
                 </select>
               </div>
-              <div>
-                <label class="canva-text field-label text-teal-800" for="system-qty">จำนวนตามระบบ (Expected)</label> 
-                <input id="system-qty" class="field-control bg-teal-50 border-teal-200" type="number" min="0" step="1" value="1" required>
-              </div>
-              <div class="hidden xl:block"></div> <!-- Spacer for layout -->
               
-              <!-- ช่องใส่ตัวเลข (จำนวนที่ตรวจนับ, ชำรุด, รวมทั้งหมด, ส่วนต่าง) -->
-              <div><label class="canva-text field-label" for="good-qty">จำนวนที่ตรวจนับ</label> <input id="good-qty" class="field-control" type="number" min="0" step="1" value="1" required></div>
+              <!-- ช่องใส่ตัวเลข (จำนวนปกติ, ชำรุด, รวมทั้งหมด) -->
+              <div><label class="canva-text field-label" for="good-qty">จำนวนปกติ</label> <input id="good-qty" class="field-control" type="number" min="0" step="1" value="1" required></div>
               <div><label class="canva-text field-label" for="damaged-qty">จำนวนที่ชำรุด</label> <input id="damaged-qty" class="field-control" type="number" min="0" step="1" value="0" required></div>
               <div>
-                <label class="canva-text field-label" for="total-qty">รวมนับได้ (อัตโนมัติ)</label> 
-                <input id="total-qty" class="field-control bg-slate-50 font-bold text-slate-700 border-slate-200 cursor-not-allowed focus:ring-0" type="number" readonly value="1" tabindex="-1">
-              </div>
-              <div>
-                <label class="canva-text field-label" for="diff-qty">ส่วนต่าง (อัตโนมัติ)</label> 
-                <input id="diff-qty" class="field-control bg-emerald-50 font-bold text-emerald-700 border-emerald-200 cursor-not-allowed focus:ring-0" type="text" readonly value="0" tabindex="-1">
+                <label class="canva-text field-label" for="total-qty">รวมทั้งหมด (อัตโนมัติ)</label> 
+                <input id="total-qty" class="field-control bg-teal-50/50 font-bold text-teal-800 border-teal-200 cursor-not-allowed focus:ring-0" type="number" readonly value="1" tabindex="-1">
               </div>
               
-              <div class="md:col-span-2 xl:col-span-4"><label class="canva-text field-label" for="remarks">หมายเหตุการตรวจนับ</label> <textarea id="remarks" class="field-control resize-y min-h-[46px]" rows="2"></textarea></div>
+              <div class="md:col-span-2 xl:col-span-5"><label class="canva-text field-label" for="remarks">หมายเหตุการตรวจนับ</label> <textarea id="remarks" class="field-control resize-y min-h-[46px]" rows="2"></textarea></div>
             </div>
           </section>
 
@@ -285,7 +276,7 @@
         </div>
         <div class="table-scroll">
           <div class="overflow-x-auto px-5 sm:px-8 pb-7">
-            <table class="w-full min-w-[1280px] text-left border-separate border-spacing-0">
+            <table class="w-full min-w-[1080px] text-left border-separate border-spacing-0">
               <thead>
                 <tr class="text-xs uppercase tracking-[0.08em] text-teal-800 bg-teal-50">
                   <th class="px-4 py-3 font-bold rounded-tl-xl">รหัสครุภัณฑ์</th>
@@ -293,10 +284,8 @@
                   <th class="px-4 py-3 font-bold">แผนก</th>
                   <th class="px-4 py-3 font-bold">สถานที่ตั้ง</th>
                   <th class="px-4 py-3 font-bold">สถานะ / สภาพ</th>
-                  <th class="px-4 py-3 font-bold text-slate-500">ตามระบบ</th>
-                  <th class="px-4 py-3 font-bold text-teal-800">นับได้</th>
-                  <th class="px-4 py-3 font-bold">ส่วนต่าง</th>
-                  <th class="px-4 py-3 font-bold">จำนวนที่ตรวจนับ</th>
+                  <th class="px-4 py-3 font-bold">จำนวนรวม</th>
+                  <th class="px-4 py-3 font-bold">จำนวนปกติ</th>
                   <th class="px-4 py-3 font-bold">จำนวนชำรุด</th>
                   <th class="px-4 py-3 font-bold">วันที่ตรวจ</th>
                   <th class="px-4 py-3 font-bold rounded-tr-xl">จัดการ</th>
@@ -344,20 +333,14 @@
         </div>
         <div>
           <h4 class="text-sm font-bold text-teal-700 uppercase tracking-widest border-b pb-2 mb-3">ข้อมูลการตรวจนับ</h4>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-2 text-sm">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2 text-sm">
             <div><span class="block text-slate-500 text-xs mb-1">สภาพ</span><strong id="v-condition" class="text-teal-900"></strong></div>
             <div><span class="block text-slate-500 text-xs mb-1">ผลตรวจนับ</span><strong id="v-result" class="text-teal-900"></strong></div>
-            <div class="col-span-2 hidden md:block"></div>
-            
-            <div><span class="block text-slate-500 text-xs mb-1">จำนวนตามระบบ</span><strong id="v-sys" class="text-slate-600"></strong></div>
-            <div><span class="block text-slate-500 text-xs mb-1">รวมทั้งหมด (นับได้)</span><strong id="v-total" class="text-teal-900 text-lg"></strong></div>
-            <div><span class="block text-slate-500 text-xs mb-1">ส่วนต่าง</span><strong id="v-diff" class="text-lg"></strong></div>
-            <div></div> <!-- spacer -->
-
-            <div><span class="block text-slate-500 text-xs mb-1">จำนวนที่ตรวจนับ</span><strong id="v-good" class="text-emerald-700"></strong></div>
+            <div class="col-span-1 hidden md:block"></div>
+            <div><span class="block text-slate-500 text-xs mb-1">จำนวนปกติ</span><strong id="v-good" class="text-emerald-700"></strong></div>
             <div><span class="block text-slate-500 text-xs mb-1">จำนวนชำรุด</span><strong id="v-damaged" class="text-red-700"></strong></div>
-            
-            <div class="col-span-2 md:col-span-4"><span class="block text-slate-500 text-xs mb-1">หมายเหตุ</span><p id="v-remarks" class="text-teal-900 bg-slate-50 p-3 rounded-lg border border-slate-100"></p></div>
+            <div><span class="block text-slate-500 text-xs mb-1">รวมทั้งหมด</span><strong id="v-total" class="text-teal-900 text-lg"></strong></div>
+            <div class="col-span-2 md:col-span-3"><span class="block text-slate-500 text-xs mb-1">หมายเหตุ</span><p id="v-remarks" class="text-teal-900 bg-slate-50 p-3 rounded-lg border border-slate-100"></p></div>
           </div>
         </div>
         <div>
@@ -394,9 +377,7 @@
       <td class="row-department px-4 py-4 align-top border-b border-teal-900/10 text-sm"></td>
       <td class="row-location px-4 py-4 align-top border-b border-teal-900/10 text-sm"></td>
       <td class="px-4 py-4 align-top border-b border-teal-900/10"><span class="row-result badge"></span> <p class="row-condition mt-2 text-xs"></p></td>
-      <td class="px-4 py-4 align-top border-b border-teal-900/10"><p class="row-sys-qty text-sm font-semibold text-slate-500 bg-slate-50 px-2 py-1 rounded inline-block border border-slate-200"></p></td>
-      <td class="px-4 py-4 align-top border-b border-teal-900/10"><p class="row-qty text-sm font-bold text-teal-900 bg-teal-50 px-2 py-1 rounded inline-block border border-teal-200"></p></td>
-      <td class="px-4 py-4 align-top border-b border-teal-900/10"><p class="row-diff-qty text-sm font-bold px-2 py-1 rounded inline-block border"></p></td>
+      <td class="px-4 py-4 align-top border-b border-teal-900/10"><p class="row-qty text-sm font-semibold text-teal-900 bg-teal-50 px-2 py-1 rounded inline-block"></p></td>
       <td class="px-4 py-4 align-top border-b border-teal-900/10"><p class="row-good-qty text-sm font-semibold text-emerald-700"></p>
         <div class="mt-2 inline-flex items-center gap-1 rounded-lg bg-emerald-50 p-1">
           <button type="button" class="decrease-good-button inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-800 hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" aria-label="ลดจำนวนที่ดี"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
@@ -435,21 +416,37 @@
 
   <script>
     // ----------------------------------------------------
-    // MOCK DATA SDK (ปรับปรุงเพื่อรองรับ History)
+    // MOCK DATA SDK (ปรับปรุงเพื่อรองรับ LocalStorage)
     // ----------------------------------------------------
     window.dataSdk = {
       mockData: [],
       mockId: 1,
+      _saveToLocalStorage() {
+        localStorage.setItem('assetInventoryData', JSON.stringify(this.mockData));
+        localStorage.setItem('assetInventoryMockId', this.mockId);
+      },
+      _loadFromLocalStorage() {
+        const savedData = localStorage.getItem('assetInventoryData');
+        const savedId = localStorage.getItem('assetInventoryMockId');
+        if (savedData) {
+          this.mockData = JSON.parse(savedData);
+        }
+        if (savedId) {
+          this.mockId = parseInt(savedId, 10);
+        }
+      },
       async init(handler) {
         this.handler = handler;
+        this._loadFromLocalStorage(); // โหลดข้อมูลที่เคยบันทึกไว้
         setTimeout(() => this.handler.onDataChanged(this.mockData), 300);
         return { isOk: true };
       },
       async create(record) {
         return new Promise(resolve => setTimeout(() => {
           record.__backendId = String(this.mockId++);
-          record.history = []; // กำหนด array ว่างสำหรับประวัติเมื่อสร้างใหม่
+          record.history = []; 
           this.mockData.unshift(record);
+          this._saveToLocalStorage(); // เซฟลงเบราว์เซอร์
           this.handler.onDataChanged(this.mockData);
           resolve({ isOk: true });
         }, 500));
@@ -459,16 +456,15 @@
           const idx = this.mockData.findIndex(r => r.__backendId === record.__backendId);
           if (idx > -1) {
             const oldRecord = this.mockData[idx];
-            // จัดเก็บ History ก่อนถูกเขียนทับ
             const currentHistory = oldRecord.history || [];
             
-            // สร้าง snapshot เพื่อเก็บข้อมูลเก่า
             const snapshot = { ...oldRecord };
             delete snapshot.history;
-            snapshot.__editedAt = new Date().toISOString(); // เพิ่มเวลาแก้ไข
+            snapshot.__editedAt = new Date().toISOString(); 
 
-            record.history = [...currentHistory, snapshot]; // แนบประวัติเก่า + ที่เพิ่งแก้ กลับเข้าไป
+            record.history = [...currentHistory, snapshot]; 
             this.mockData[idx] = record;
+            this._saveToLocalStorage(); // เซฟลงเบราว์เซอร์
           }
           this.handler.onDataChanged(this.mockData);
           resolve({ isOk: true });
@@ -477,6 +473,7 @@
       async delete(record) {
         return new Promise(resolve => setTimeout(() => {
           this.mockData = this.mockData.filter(r => r.__backendId !== record.__backendId);
+          this._saveToLocalStorage(); // เซฟลงเบราว์เซอร์
           this.handler.onDataChanged(this.mockData);
           resolve({ isOk: true });
         }, 500));
@@ -515,11 +512,9 @@
       location: document.getElementById("location"),
       condition: document.getElementById("condition"),
       inspectionResult: document.getElementById("inspection-result"),
-      systemQty: document.getElementById("system-qty"),
       goodQty: document.getElementById("good-qty"),
       damagedQty: document.getElementById("damaged-qty"),
       totalQty: document.getElementById("total-qty"),
-      diffQty: document.getElementById("diff-qty"),
       responsiblePerson: document.getElementById("responsible-person"),
       inspector: document.getElementById("inspector"),
       inspectionDate: document.getElementById("inspection-date"),
@@ -531,28 +526,10 @@
     function calculateTotalQty() {
       const good = parseInt(inputs.goodQty.value) || 0;
       const damaged = parseInt(inputs.damagedQty.value) || 0;
-      const sys = parseInt(inputs.systemQty.value) || 0;
-      
-      const total = good + damaged;
-      inputs.totalQty.value = total;
-
-      const diff = total - sys;
-      const diffStr = (diff > 0 ? '+' : '') + diff;
-      inputs.diffQty.value = diffStr;
-
-      // ปรับแต่งสีพื้นหลังส่วนต่าง
-      if (diff === 0) {
-        inputs.diffQty.className = "field-control bg-emerald-50 font-bold text-emerald-700 border-emerald-200 cursor-not-allowed focus:ring-0";
-      } else if (diff < 0) {
-        inputs.diffQty.className = "field-control bg-red-50 font-bold text-red-700 border-red-200 cursor-not-allowed focus:ring-0";
-      } else {
-        inputs.diffQty.className = "field-control bg-amber-50 font-bold text-amber-700 border-amber-200 cursor-not-allowed focus:ring-0";
-      }
+      inputs.totalQty.value = good + damaged;
     }
-    
     inputs.goodQty.addEventListener("input", calculateTotalQty);
     inputs.damagedQty.addEventListener("input", calculateTotalQty);
-    inputs.systemQty.addEventListener("input", calculateTotalQty);
 
     function setStatus(element, message, type = "neutral") {
       element.textContent = message;
@@ -602,7 +579,7 @@
       saveButton.disabled = isSaving;
       clearButton.disabled = isSaving;
       Array.from(form.querySelectorAll(".field-control")).forEach((field) => {
-        field.disabled = isSaving || field.id === "total-qty" || field.id === "diff-qty";
+        field.disabled = isSaving || field.id === "total-qty";
       });
       saveButtonText.classList.toggle("hidden", isSaving);
       saveLoading.classList.toggle("hidden", !isSaving);
@@ -641,15 +618,7 @@
       conditionEl.textContent = "สภาพ: " + (record.condition || "—");
       conditionEl.classList.add(record.condition === "ปกติ" ? "text-emerald-700" : "text-amber-700");
 
-      row.querySelector(".row-sys-qty").textContent = formatNumber(record.system_qty || 0);
       row.querySelector(".row-qty").textContent = formatNumber(record.actual_qty);
-      
-      const diffEl = row.querySelector(".row-diff-qty");
-      const diffVal = record.diff_qty || 0;
-      diffEl.textContent = (diffVal > 0 ? "+" : "") + formatNumber(diffVal);
-      if(diffVal === 0) { diffEl.classList.add("bg-emerald-50", "text-emerald-700", "border-emerald-200"); }
-      else if(diffVal < 0) { diffEl.classList.add("bg-red-50", "text-red-700", "border-red-200"); }
-      else { diffEl.classList.add("bg-amber-50", "text-amber-700", "border-amber-200"); }
       
       const goodQty = record.good_qty !== undefined ? record.good_qty : Math.max(0, Number(record.actual_qty || 0) - Number(record.damaged_qty || 0));
       row.querySelector(".row-good-qty").textContent = formatNumber(goodQty);
@@ -693,10 +662,6 @@
       const updatedGood = field === "good_qty" ? nextQty : (record.good_qty !== undefined ? record.good_qty : Math.max(0, record.actual_qty - record.damaged_qty));
       const updatedDamaged = field === "damaged_qty" ? nextQty : (record.damaged_qty || 0);
       updatedData.actual_qty = updatedGood + updatedDamaged;
-      
-      // อัปเดตส่วนต่างทันทีที่กดเพิ่ม/ลดในตาราง
-      const sysQty = record.system_qty || 0;
-      updatedData.diff_qty = updatedData.actual_qty - sysQty;
 
       const result = await window.dataSdk.update(updatedData);
       if (!result.isOk) {
@@ -721,18 +686,10 @@
       const dmg = record.damaged_qty ?? 0;
       const act = record.actual_qty ?? 0;
       const good = record.good_qty !== undefined ? record.good_qty : Math.max(0, act - dmg);
-      const sys = record.system_qty || 0;
-      const diff = record.diff_qty || 0;
       
-      document.getElementById("v-sys").textContent = formatNumber(sys);
       document.getElementById("v-good").textContent = formatNumber(good);
       document.getElementById("v-damaged").textContent = formatNumber(dmg);
       document.getElementById("v-total").textContent = formatNumber(act);
-      
-      const diffEl = document.getElementById("v-diff");
-      diffEl.textContent = (diff > 0 ? "+" : "") + formatNumber(diff);
-      diffEl.className = diff === 0 ? "text-emerald-600 font-bold text-lg" : (diff < 0 ? "text-red-600 font-bold text-lg" : "text-amber-600 font-bold text-lg");
-
       document.getElementById("v-remarks").textContent = record.remarks || "ไม่มีหมายเหตุ";
       
       document.getElementById("v-inspector").textContent = record.inspector || "-";
@@ -762,8 +719,8 @@
               <div class="grid grid-cols-2 md:grid-cols-4 gap-y-3 gap-x-2 pl-2">
                 <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">สภาพ</span><strong class="text-slate-700">${hist.condition || "-"}</strong></div>
                 <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">ผลตรวจ</span><strong class="text-slate-700">${hist.inspection_result || "-"}</strong></div>
-                <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">ตามระบบ / ปกติ / ชำรุด</span><strong class="text-slate-700">${hist.system_qty || 0} / ${vGood} / ${hist.damaged_qty || 0}</strong></div>
-                <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">ส่วนต่าง</span><strong class="${(hist.diff_qty || 0) === 0 ? 'text-emerald-700' : 'text-red-700'} font-bold">${(hist.diff_qty || 0) > 0 ? '+' : ''}${hist.diff_qty || 0}</strong></div>
+                <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">ปกติ / ชำรุด</span><strong class="text-slate-700">${vGood} / ${hist.damaged_qty || 0}</strong></div>
+                <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">รวมทั้งหมด</span><strong class="text-teal-800 font-bold">${hist.actual_qty || 0}</strong></div>
                 <div class="col-span-2 md:col-span-4"><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">หมายเหตุ</span><span class="text-slate-600">${hist.remarks || "ไม่มีหมายเหตุ"}</span></div>
               </div>
             </div>
@@ -779,6 +736,7 @@
         };
 
       } else {
+        // ซ่อนปุ่มถ้าไม่เคยมีการแก้
         historyBtn.classList.remove("flex");
         historyBtn.classList.add("hidden");
         historyContainer.innerHTML = "";
@@ -819,14 +777,10 @@
         const dmg = record.damaged_qty ?? 0;
         const act = record.actual_qty ?? 0;
         const good = record.good_qty !== undefined ? record.good_qty : Math.max(0, act - dmg);
-        const sys = record.system_qty !== undefined ? record.system_qty : act; // fallback for old records
         
-        inputs.systemQty.value = sys;
         inputs.goodQty.value = good;
         inputs.damagedQty.value = dmg;
         inputs.totalQty.value = good + dmg;
-        
-        calculateTotalQty(); // อัปเดตสีช่องส่วนต่าง
         
         inputs.responsiblePerson.value = record.responsible_person || "";
         inputs.inspector.value = record.inspector || "";
@@ -933,14 +887,10 @@
     function resetForm() {
       state.editingId = null;
       form.reset();
-      inputs.systemQty.value = "1";
       inputs.goodQty.value = "1";
       inputs.damagedQty.value = "0";
       inputs.totalQty.value = "1";
-      inputs.diffQty.value = "0";
       inputs.inspectionDate.value = toDateInputValue(new Date().toISOString());
-      
-      calculateTotalQty(); // set สีตั้งต้นให้ถูกต้อง
       setStatus(formStatus, "", "neutral");
       
       saveButton.classList.replace("bg-amber-600", "bg-teal-800");
@@ -972,10 +922,8 @@
       setSaving(true);
       setStatus(formStatus, "กำลังบันทึกข้อมูลตรวจนับ...", "neutral");
 
-      const sys = Number(inputs.systemQty.value || 0);
       const good = Number(inputs.goodQty.value || 0);
       const damaged = Number(inputs.damagedQty.value || 0);
-      const total = good + damaged;
 
       const record = {
         department: inputs.department.value.trim(),
@@ -987,11 +935,9 @@
         condition: inputs.condition.value,
         inspection_result: inputs.inspectionResult.value,
         
-        system_qty: sys,
         good_qty: good,
         damaged_qty: damaged,
-        actual_qty: total,
-        diff_qty: total - sys,
+        actual_qty: good + damaged,
         
         responsible_person: inputs.responsiblePerson.value.trim(),
         inspector: inputs.inspector.value.trim(),
