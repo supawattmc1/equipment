@@ -416,67 +416,100 @@
 
   <script>
     // ----------------------------------------------------
-    // MOCK DATA SDK (ปรับปรุงเพื่อรองรับ LocalStorage)
+    // REAL BACKEND SDK (Google Sheets API)
     // ----------------------------------------------------
+    
+    // เอา URL ที่ได้จากขั้นตอนที่ 2 มาใส่ในเครื่องหมายคำพูดด้านล่างนี้เลยครับ
+    const API_URL = "ใส่_URL_ของ_GOOGLE_APPS_SCRIPT_ตรงนี้"; 
+
     window.dataSdk = {
       mockData: [],
-      mockId: 1,
-      _saveToLocalStorage() {
-        localStorage.setItem('assetInventoryData', JSON.stringify(this.mockData));
-        localStorage.setItem('assetInventoryMockId', this.mockId);
-      },
-      _loadFromLocalStorage() {
-        const savedData = localStorage.getItem('assetInventoryData');
-        const savedId = localStorage.getItem('assetInventoryMockId');
-        if (savedData) {
-          this.mockData = JSON.parse(savedData);
-        }
-        if (savedId) {
-          this.mockId = parseInt(savedId, 10);
-        }
-      },
+      
       async init(handler) {
         this.handler = handler;
-        this._loadFromLocalStorage(); // โหลดข้อมูลที่เคยบันทึกไว้
-        setTimeout(() => this.handler.onDataChanged(this.mockData), 300);
-        return { isOk: true };
+        try {
+          // โหลดข้อมูลทั้งหมดจาก Google Sheets
+          const res = await fetch(API_URL);
+          const result = await res.json();
+          if (result.status === 'success') {
+            this.mockData = result.data || [];
+            this.handler.onDataChanged(this.mockData);
+            return { isOk: true };
+          }
+        } catch (e) { console.error("Init Error:", e); }
+        
+        // ถ้าโหลดไม่สำเร็จ ให้แสดงหน้าจอว่างๆ ไปก่อน
+        this.handler.onDataChanged([]);
+        return { isOk: false };
       },
+      
       async create(record) {
-        return new Promise(resolve => setTimeout(() => {
-          record.__backendId = String(this.mockId++);
+        try {
           record.history = []; 
-          this.mockData.unshift(record);
-          this._saveToLocalStorage(); // เซฟลงเบราว์เซอร์
-          this.handler.onDataChanged(this.mockData);
-          resolve({ isOk: true });
-        }, 500));
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            redirect: 'follow', // จำเป็นสำหรับ Google Apps Script
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'create', record: record })
+          });
+          const result = await res.json();
+          
+          if (result.status === 'success') {
+            this.mockData.unshift(result.record); // เอาข้อมูลใหม่ขึ้นบนสุด
+            this.handler.onDataChanged(this.mockData);
+            return { isOk: true };
+          }
+        } catch (e) { console.error("Create Error:", e); }
+        return { isOk: false };
       },
+      
       async update(record) {
-        return new Promise(resolve => setTimeout(() => {
+        try {
+          // จัดการประวัติการแก้ไขก่อนส่งไป Backend
           const idx = this.mockData.findIndex(r => r.__backendId === record.__backendId);
           if (idx > -1) {
             const oldRecord = this.mockData[idx];
             const currentHistory = oldRecord.history || [];
-            
             const snapshot = { ...oldRecord };
             delete snapshot.history;
             snapshot.__editedAt = new Date().toISOString(); 
-
-            record.history = [...currentHistory, snapshot]; 
-            this.mockData[idx] = record;
-            this._saveToLocalStorage(); // เซฟลงเบราว์เซอร์
+            record.history = [...currentHistory, snapshot];
           }
-          this.handler.onDataChanged(this.mockData);
-          resolve({ isOk: true });
-        }, 500));
+
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'update', record: record })
+          });
+          const result = await res.json();
+          
+          if (result.status === 'success') {
+            if (idx > -1) this.mockData[idx] = record;
+            this.handler.onDataChanged(this.mockData);
+            return { isOk: true };
+          }
+        } catch (e) { console.error("Update Error:", e); }
+        return { isOk: false };
       },
+      
       async delete(record) {
-        return new Promise(resolve => setTimeout(() => {
-          this.mockData = this.mockData.filter(r => r.__backendId !== record.__backendId);
-          this._saveToLocalStorage(); // เซฟลงเบราว์เซอร์
-          this.handler.onDataChanged(this.mockData);
-          resolve({ isOk: true });
-        }, 500));
+        try {
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'delete', record: record })
+          });
+          const result = await res.json();
+          
+          if (result.status === 'success') {
+            this.mockData = this.mockData.filter(r => r.__backendId !== record.__backendId);
+            this.handler.onDataChanged(this.mockData);
+            return { isOk: true };
+          }
+        } catch (e) { console.error("Delete Error:", e); }
+        return { isOk: false };
       }
     };
     // ----------------------------------------------------
