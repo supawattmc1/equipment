@@ -415,683 +415,619 @@
   </template>
 
   <script>
-const $ = (id) => document.getElementById(id);
-let selectedFiles = [];
-let currentEditId = null;
+    // ----------------------------------------------------
+    // REAL BACKEND SDK (Google Sheets API)
+    // ----------------------------------------------------
+    
+    // เอา URL ที่ได้จากขั้นตอนที่ 2 มาใส่ในเครื่องหมายคำพูดด้านล่างนี้เลยครับ
+    const API_URL = "https://script.google.com/macros/s/AKfycbxcOQu6fxmMaju1pa3qn3zHsUWPRjsQkyXGcf2qu3r0w4oStf3Wk6hM52EhRQhsjW3h/exec"; 
 
-const RECIPIENT_EMAIL = 'supawat.tmc1@gmail.com';
-const FORMSUBMIT_ENDPOINT = 'https://formsubmit.co/' + RECIPIENT_EMAIL;
-const GOOGLE_SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxUPVrOu7xcJ1Lw4fr9JZyXD7lFpkyc6yrKnOBWHN8qAvEt-FZxpyNXBorv4rt8jOa3/exec';
-
-// ==========================================
-// การตั้งค่าและการทำงานของ IndexedDB
-// ==========================================
-let db;
-
-const request = indexedDB.open("JobAppDatabase", 1);
-
-request.onupgradeneeded = function(event) {
-    db = event.target.result;
-    if (!db.objectStoreNames.contains("users")) {
-        db.createObjectStore("users", { keyPath: "id", autoIncrement: true });
-    }
-};
-
-request.onsuccess = function(event) {
-    db = event.target.result;
-    setBannerHtml('storage-banner ok', 'เชื่อมต่อระบบ IndexedDB, FormSubmit และ Google Sheets สำเร็จ');
-    renderCards();
-};
-
-request.onerror = function(event) {
-    setBannerHtml('storage-banner warn', 'ไม่สามารถเชื่อมต่อฐานข้อมูล IndexedDB ได้');
-};
-
-function addData(db, dataObj) {
-    return new Promise((resolve, reject) => {
-        if (!db) { reject("ฐานข้อมูลยังไม่พร้อมใช้งาน"); return; }
-        const transaction = db.transaction(["users"], "readwrite");
-        const store = transaction.objectStore("users");
-        const addRequest = store.add(dataObj);
-        
-        addRequest.onsuccess = function() { resolve(addRequest.result); };
-        addRequest.onerror = function(e) { reject(e); };
-    });
-}
-
-function renderCards(searchTerm = '') {
-    if (!db) return;
-    const transaction = db.transaction(['users'], 'readonly');
-    const store = transaction.objectStore('users');
-    const getAllReq = store.getAll();
-
-    getAllReq.onsuccess = function(e) {
-        let data = e.target.result;
-        
-        if (searchTerm) {
-            const term = searchTerm.toLowerCase();
-            data = data.filter(item => 
-                (item.name && item.name.toLowerCase().includes(term)) || 
-                (item.position && item.position.toLowerCase().includes(term))
-            );
-        }
-
-        const container = $('cardList');
-        container.innerHTML = '';
-        $('recordCount').innerText = `${data.length} ใบสมัคร`;
-        
-        if ($('selectAll')) $('selectAll').checked = false;
-
-        if (!data || data.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#888; padding: 20px;">ยังไม่มีข้อมูลใบสมัคร</div>';
-            return;
-        }
-
-        data.forEach(item => {
-            let dateStr = '-';
-            if(item.createdAt) {
-                const d = new Date(item.createdAt);
-                const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-                dateStr = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
-            }
-
-            const card = document.createElement('div');
-            card.style.cssText = `
-                background-color: #f2ecd9;
-                border: 1px solid #e0d8c3;
-                border-radius: 8px;
-                padding: 15px 20px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                transition: all 0.2s;
-            `;
-            
-            card.onmouseover = () => {
-                card.style.transform = 'translateY(-2px)';
-                card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.05)';
-            };
-            card.onmouseout = () => {
-                card.style.transform = 'translateY(0)';
-                card.style.boxShadow = 'none';
-            };
-
-            card.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <input type="checkbox" class="row-checkbox" value="${item.id}" style="cursor: pointer;">
-                    <div>
-                        <h3 class="clickable-name" onclick="viewDetails(${item.id})" title="คลิกเพื่อดูรายละเอียด">${escapeHtml(item.name || 'ไม่ระบุชื่อ')}</h3>
-                        <p style="margin: 0; color: #555; font-size: 14px;">${escapeHtml(item.position || 'ไม่ระบุตำแหน่ง')} / ${escapeHtml(item.phone || '-')}</p>
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="color: #cda12f; font-weight: bold; font-size: 13px; margin-bottom: 5px; font-family: 'IBM Plex Mono', monospace;">${escapeHtml(item.receiptNo || '-')}</div>
-                    <div style="color: #777; font-size: 12px; margin-bottom: 8px;">${dateStr}</div>
-                    <div>
-                        <button onclick="editRecord(${item.id})" style="background-color: #f39c12; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 4px;">✏️ แก้ไข</button>
-                        <button onclick="exportRecordToCSV(${item.id})" style="background-color: #27ae60; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 4px;">📥 โหลด</button>
-                        <button onclick="deleteRecord(${item.id})" style="background-color: #d9534f; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">ลบ</button>
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-    };
-}
-
-function searchCards() {
-    const val = $('searchInput').value;
-    renderCards(val);
-}
-
-function viewDetails(id) {
-    if (!db) return;
-    const transaction = db.transaction(['users'], 'readonly');
-    const store = transaction.objectStore('users');
-    const getReq = store.get(id);
-
-    getReq.onsuccess = function() {
-        const data = getReq.result;
-        if (!data) return;
-
-        let dateStr = '-';
-        if (data.createdAt) {
-            const d = new Date(data.createdAt);
-            dateStr = d.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
-        }
-
-        $('modalName').innerText = data.name || 'ไม่ระบุชื่อ';
-        $('mdReceipt').innerText = data.receiptNo || '-';
-        $('mdDate').innerText = dateStr;
-        $('mdPosition').innerText = data.position || '-';
-        $('mdSalary').innerText = data.salary || '-';
-        
-        const phone = data.phone || '-';
-        $('mdPhone').innerHTML = phone !== '-' ? `<a href="tel:${phone}" class="detail-link">${escapeHtml(phone)}</a>` : '-';
-        
-        const email = data.email || '-';
-        $('mdEmail').innerHTML = email !== '-' ? `<a href="mailto:${email}" class="detail-link">${escapeHtml(email)}</a>` : '-';
-
-        $('mdDob').innerText = data.dob || '-';
-        $('mdEdu').innerText = data.education || '-';
-        $('mdAddress').innerText = data.address || '-';
-        $('mdExp').innerText = data.experience || '-';
-
-        const filesGroup = $('mdFilesGroup');
-        const filesContainer = $('mdFiles');
-        filesContainer.innerHTML = '';
-        
-        if (data.attachedFiles && data.attachedFiles.length > 0) {
-            filesGroup.style.display = 'block';
-            data.attachedFiles.forEach(fileObj => {
-                const url = URL.createObjectURL(fileObj.data);
-                const a = document.createElement('a');
-                a.href = url;
-                a.target = '_blank';
-                a.style.cssText = 'display: inline-flex; align-items: center; padding: 8px 12px; background: #f2ecd9; border: 1px solid #e0d8c3; border-radius: 6px; text-decoration: none; color: var(--forest); font-size: 13px; font-weight: 500; transition: all 0.2s;';
-                a.onmouseover = () => a.style.backgroundColor = '#e8dfc5';
-                a.onmouseout = () => a.style.backgroundColor = '#f2ecd9';
-                a.innerHTML = `📄 ${escapeHtml(fileObj.name)} <span style="font-size: 12px; color: var(--ink-soft); margin-left: 5px; font-weight: normal;">(${(fileObj.data.size / 1024).toFixed(1)} KB)</span>`;
-                filesContainer.appendChild(a);
-            });
-        } else {
-            filesGroup.style.display = 'none'; 
-        }
-
-        $('detailModal').classList.add('active');
-    };
-}
-
-function closeModal(e) {
-    if (e && e.target.id !== 'detailModal' && !e.target.classList.contains('modal-close')) {
-        return;
-    }
-    $('detailModal').classList.remove('active');
-}
-
-$('tabApplyBtn').onclick = () => switchTab('apply');
-$('tabViewBtn').onclick = () => {
-    if(currentEditId) cancelEdit(); 
-    switchTab('view');
-};
-
-function switchTab(name){
-  const isApply = name === 'apply';
-  $('tabApplyBtn').classList.toggle('active', isApply);
-  $('tabViewBtn').classList.toggle('active', !isApply);
-  $('applyPanel').style.display = isApply ? 'block' : 'none';
-  $('viewPanel').style.display = isApply ? 'none' : 'block';
-  if (!isApply) renderCards();
-}
-
-['fName', 'fPhone', 'fEmail', 'fPosition'].forEach(id => {
-  $(id).addEventListener('input', () => clearFieldError('wrap_' + id));
-});
-  
-$('fEducation').addEventListener('change', (e) => {
-  if (e.target.value === 'อื่นๆ') {
-    $('wrap_fOtherEdu').style.display = 'block';
-  } else {
-    $('wrap_fOtherEdu').style.display = 'none';
-    $('fOtherEdu').value = ''; 
-  }
-});
-  
-$('dropzone').onclick = () => $('fFiles').click();
-
-$('fFiles').addEventListener('change', (e)=>{
-  for(const f of e.target.files){
-    if(f.size > 8*1024*1024){
-      renderStatus('ไฟล์ "'+f.name+'" มีขนาดเกิน 8 MB กรุณาเลือกไฟล์ที่เล็กลง', 'err');
-      continue;
-    }
-    selectedFiles.push(f);
-  }
-  e.target.value = '';
-  renderFileList();
-});
-
-function renderFileList(){
-  const el = $('filelist');
-  el.innerHTML = '';
-  selectedFiles.forEach((f, idx)=>{
-    const chip = document.createElement('div');
-    chip.className = 'filechip';
-    chip.innerHTML = `<span class="name">${escapeHtml(f.name)}</span><button type="button" data-idx="${idx}">นำออก</button>`;
-    chip.querySelector('button').onclick = () => { selectedFiles.splice(idx,1); renderFileList(); };
-    el.appendChild(chip);
-  });
-}
-
-function setBannerHtml(className, message){
-  const banner = $('storageBanner');
-  banner.className = className;
-  banner.innerHTML = '<span class="msg">' + message + '</span>';
-}
-
-function renderStatus(msg, type){
-  const el = $('statusMsg');
-  el.textContent = msg;
-  el.className = 'status-msg' + (type ? ' '+type : '');
-}
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function setFieldError(wrapId){
-  const wrap = $(wrapId);
-  if(wrap) wrap.classList.add('invalid');
-}
-function clearFieldError(wrapId){
-  const wrap = $(wrapId);
-  if(wrap) wrap.classList.remove('invalid');
-}
-function clearAllFieldErrors(){
-  ['wrap_fName', 'wrap_fPhone', 'wrap_fEmail', 'wrap_fPosition'].forEach(clearFieldError);
-}
-
-function isValidEmail(v){
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-}
-
-function editRecord(id) {
-    if (!db) return;
-    const transaction = db.transaction(['users'], 'readonly');
-    const store = transaction.objectStore('users');
-    const getReq = store.get(id);
-
-    getReq.onsuccess = function() {
-        const data = getReq.result;
-        if (!data) return;
-
-        currentEditId = id; 
-        switchTab('apply'); 
-
-        $('fName').value = data.name || '';
-        $('fDob').value = data.dob === '-' ? '' : data.dob;
-        $('fPhone').value = data.phone || '';
-        $('fEmail').value = data.email || '';
-        $('fAddress').value = data.address === '-' ? '' : data.address;
-        $('fPosition').value = data.position || '';
-        $('fSalary').value = data.salary === '-' ? '' : data.salary;
-        $('fExperience').value = data.experience === '-' ? '' : data.experience;
-
-        if (data.education && data.education.startsWith('อื่นๆ')) {
-            $('fEducation').value = 'อื่นๆ';
-            $('wrap_fOtherEdu').style.display = 'block';
-            const match = data.education.match(/อื่นๆ \((.*)\)/);
-            $('fOtherEdu').value = match ? match[1] : '';
-        } else {
-            $('fEducation').value = data.education === '-' ? '' : data.education;
-            $('wrap_fOtherEdu').style.display = 'none';
-        }
-
-        $('submitBtn').textContent = 'บันทึกการแก้ไข';
-        $('cancelEditBtn').style.display = 'inline-block';
-        $('receiptBox').classList.remove('show');
-        
-        selectedFiles = []; 
-        renderFileList();
-        
-        renderStatus('✏️ กำลังแก้ไขข้อมูลใบสมัครเลขที่: ' + data.receiptNo, 'ok');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-}
-
-function cancelEdit() {
-    currentEditId = null;
-    $('appForm').reset();
-    $('submitBtn').textContent = 'ส่งใบสมัคร';
-    $('cancelEditBtn').style.display = 'none';
-    $('wrap_fOtherEdu').style.display = 'none';
-    renderStatus('', '');
-    selectedFiles = [];
-    renderFileList();
-    clearAllFieldErrors();
-}
-
-async function handleSubmit(e){
-  if(e && e.preventDefault) e.preventDefault();
-  clearAllFieldErrors();
-
-  const name = $('fName').value.trim();
-  const phone = $('fPhone').value.trim();
-  const email = $('fEmail').value.trim();
-  const position = $('fPosition').value.trim();
-
-  let firstInvalidWrap = null;
-  const markInvalid = (wrapId) => {
-    setFieldError(wrapId);
-    if(!firstInvalidWrap) firstInvalidWrap = wrapId;
-  };
-
-  if(!name) markInvalid('wrap_fName');
-  if(!phone) markInvalid('wrap_fPhone');
-  if(!email || !isValidEmail(email)) markInvalid('wrap_fEmail');
-  if(!position) markInvalid('wrap_fPosition');
-
-  if(firstInvalidWrap){
-    renderStatus('กรุณากรอกข้อมูลในช่องที่ไฮไลต์สีแดงให้ครบถ้วนและถูกต้อง', 'err');
-    const el = $(firstInvalidWrap);
-    el.scrollIntoView({behavior:'smooth', block:'center'});
-    const focusable = el.querySelector('input, select, textarea');
-    if(focusable) focusable.focus();
-    return;
-  }
-
-  $('submitBtn').disabled = true;
-  
-  const mainEdu = $('fEducation').value;
-  const otherEdu = $('fOtherEdu').value.trim();
-  const finalEducation = (mainEdu === 'อื่นๆ' && otherEdu) ? `อื่นๆ (${otherEdu})` : mainEdu;
-
-  const attachedFiles = selectedFiles.map(f => ({
-      name: f.name,
-      type: f.type,
-      data: f 
-  }));
-
-  if (currentEditId) {
-      renderStatus('กำลังอัปเดตข้อมูล...', '');
-      const transaction = db.transaction(['users'], 'readwrite');
-      const store = transaction.objectStore('users');
-      const getReq = store.get(currentEditId);
+    window.dataSdk = {
+      mockData: [],
       
-      getReq.onsuccess = function() {
-          const record = getReq.result;
-          record.name = name;
-          record.phone = phone;
-          record.email = email;
-          record.dob = $('fDob').value || '-';
-          record.address = $('fAddress').value.trim() || '-';
-          record.position = position;
-          record.salary = $('fSalary').value.trim() || '-';
-          record.education = finalEducation || '-';
-          record.experience = $('fExperience').value.trim() || '-';
+      async init(handler) {
+        this.handler = handler;
+        try {
+          // โหลดข้อมูลทั้งหมดจาก Google Sheets
+          const res = await fetch(API_URL);
+          const result = await res.json();
+          if (result.status === 'success') {
+            this.mockData = result.data || [];
+            this.handler.onDataChanged(this.mockData);
+            return { isOk: true };
+          }
+        } catch (e) { console.error("Init Error:", e); }
+        
+        // ถ้าโหลดไม่สำเร็จ ให้แสดงหน้าจอว่างๆ ไปก่อน
+        this.handler.onDataChanged([]);
+        return { isOk: false };
+      },
+      
+      async create(record) {
+        try {
+          record.history = []; 
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            redirect: 'follow', // จำเป็นสำหรับ Google Apps Script
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'create', record: record })
+          });
+          const result = await res.json();
           
-          if (selectedFiles.length > 0) {
-              record.attachedFiles = attachedFiles;
-              record.filesCount = selectedFiles.length;
+          if (result.status === 'success') {
+            this.mockData.unshift(result.record); // เอาข้อมูลใหม่ขึ้นบนสุด
+            this.handler.onDataChanged(this.mockData);
+            return { isOk: true };
+          }
+        } catch (e) { console.error("Create Error:", e); }
+        return { isOk: false };
+      },
+      
+      async update(record) {
+        try {
+          // จัดการประวัติการแก้ไขก่อนส่งไป Backend
+          const idx = this.mockData.findIndex(r => r.__backendId === record.__backendId);
+          if (idx > -1) {
+            const oldRecord = this.mockData[idx];
+            const currentHistory = oldRecord.history || [];
+            const snapshot = { ...oldRecord };
+            delete snapshot.history;
+            snapshot.__editedAt = new Date().toISOString(); 
+            record.history = [...currentHistory, snapshot];
           }
 
-          const putReq = store.put(record);
-          putReq.onsuccess = function() {
-              alert('อัปเดตข้อมูลใบสมัครเรียบร้อยแล้ว');
-              cancelEdit(); 
-              switchTab('view'); 
-              $('submitBtn').disabled = false;
-          };
-          putReq.onerror = function() {
-              renderStatus('เกิดข้อผิดพลาดในการอัปเดตข้อมูล', 'err');
-              $('submitBtn').disabled = false;
-          };
-      };
-      return; 
-  }
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'update', record: record })
+          });
+          const result = await res.json();
+          
+          if (result.status === 'success') {
+            if (idx > -1) this.mockData[idx] = record;
+            this.handler.onDataChanged(this.mockData);
+            return { isOk: true };
+          }
+        } catch (e) { console.error("Update Error:", e); }
+        return { isOk: false };
+      },
+      
+      async delete(record) {
+        try {
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'delete', record: record })
+          });
+          const result = await res.json();
+          
+          if (result.status === 'success') {
+            this.mockData = this.mockData.filter(r => r.__backendId !== record.__backendId);
+            this.handler.onDataChanged(this.mockData);
+            return { isOk: true };
+          }
+        } catch (e) { console.error("Delete Error:", e); }
+        return { isOk: false };
+      }
+    };
+    // ----------------------------------------------------
 
-  renderStatus('กำลังบันทึกและส่งใบสมัคร...', '');
-  try{
-    const now = new Date();
-    const id = now.getTime().toString(36) + Math.random().toString(36).slice(2,6);
-    const receiptNo = 'APP-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + id.slice(-4).toUpperCase();
+    const state = { records: [], isSaving: false, deletingId: null, editingId: null };
 
-    const appRecord = {
-        receiptNo: receiptNo,
-        name: name,
-        phone: phone,
-        email: email,
-        dob: $('fDob').value || '-',
-        address: $('fAddress').value.trim() || '-',
-        position: position,
-        salary: $('fSalary').value.trim() || '-',
-        education: finalEducation || '-',
-        experience: $('fExperience').value.trim() || '-',
-        filesCount: selectedFiles.length,
-        attachedFiles: attachedFiles,
-        createdAt: now.toISOString()
+    const form = document.getElementById("asset-form");
+    const saveButton = document.getElementById("save-button");
+    const clearButton = document.getElementById("clear-button");
+    const saveLoading = document.getElementById("save-loading");
+    const saveButtonText = document.getElementById("save-button-text");
+    const formStatus = document.getElementById("form-status");
+    const listStatus = document.getElementById("list-status");
+    const listElement = document.getElementById("asset-list");
+    const emptyState = document.getElementById("empty-state");
+    const recordCount = document.getElementById("record-count");
+    const searchInput = document.getElementById("search-input");
+    const rowTemplate = document.getElementById("row-template");
+    
+    // Modal Elements
+    const viewModal = document.getElementById("view-modal");
+    const closeModalBtn = document.getElementById("close-modal-btn");
+    const historyBtn = document.getElementById("toggle-history-btn");
+    const historyContainer = document.getElementById("history-container");
+    const historyChevron = document.getElementById("history-chevron");
+
+    const inputs = {
+      department: document.getElementById("department"),
+      assetCode: document.getElementById("asset-code"),
+      assetName: document.getElementById("asset-name"),
+      category: document.getElementById("category"),
+      brandModel: document.getElementById("brand-model"),
+      location: document.getElementById("location"),
+      condition: document.getElementById("condition"),
+      inspectionResult: document.getElementById("inspection-result"),
+      goodQty: document.getElementById("good-qty"),
+      damagedQty: document.getElementById("damaged-qty"),
+      totalQty: document.getElementById("total-qty"),
+      responsiblePerson: document.getElementById("responsible-person"),
+      inspector: document.getElementById("inspector"),
+      inspectionDate: document.getElementById("inspection-date"),
+      acquisitionDate: document.getElementById("acquisition-date"),
+      relatedRemarks: document.getElementById("related-remarks"),
+      remarks: document.getElementById("remarks")
     };
 
-    // 1. บันทึกลง IndexedDB
-    await addData(db, appRecord);
+    function calculateTotalQty() {
+      const good = parseInt(inputs.goodQty.value) || 0;
+      const damaged = parseInt(inputs.damagedQty.value) || 0;
+      inputs.totalQty.value = good + damaged;
+    }
+    inputs.goodQty.addEventListener("input", calculateTotalQty);
+    inputs.damagedQty.addEventListener("input", calculateTotalQty);
 
-    // 2. ส่งข้อมูลลง Google Sheets
-    fetch(GOOGLE_SHEET_ENDPOINT, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(appRecord)
-    }).catch(err => console.error('Sheet Sync Error:', err));
-
-    // 3. ส่งข้อมูลไป FormSubmit (อีเมล)
-    const fd = new FormData();
-    fd.append('เลขที่ใบสมัคร', receiptNo);
-    fd.append('ชื่อ-นามสกุล', name);
-    fd.append('เบอร์โทรศัพท์', phone);
-    fd.append('email', email);
-    fd.append('วันเกิด', appRecord.dob);
-    fd.append('ที่อยู่', appRecord.address);
-    fd.append('ตำแหน่งที่สมัคร', position);
-    fd.append('เงินเดือนที่คาดหวัง', appRecord.salary);
-    fd.append('วุฒิการศึกษา', appRecord.education);
-    fd.append('ประสบการณ์ทำงาน', appRecord.experience);
-    fd.append('_subject', 'ใบสมัครงานใหม่: ' + name + ' — ' + position);
-    fd.append('_captcha', 'false');
-
-    selectedFiles.forEach((f, idx) => {
-      fd.append('file_' + (idx + 1), f, f.name);
-    });
-
-    const res = await fetch(FORMSUBMIT_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Accept': 'application/json' },
-      body: fd
-    });
-
-    if(!res.ok){
-      throw new Error('ไม่สามารถส่งอีเมลได้ (สถานะ ' + res.status + ')');
+    function setStatus(element, message, type = "neutral") {
+      element.textContent = message;
+      element.className = "status-message status-" + type;
+      if(type !== 'neutral' && message !== '') {
+        setTimeout(() => setStatus(element, "", "neutral"), 4000);
+      }
     }
 
-    renderStatus('ส่งใบสมัครและบันทึกเรียบร้อยแล้ว', 'ok');
-    $('receiptNo').textContent = receiptNo;
-    $('receiptName').textContent = 'ชื่อผู้สมัคร: ' + name + ' — ตำแหน่ง: ' + position;
-    $('receiptDate').textContent = 'วันที่ยื่นใบสมัคร: ' + now.toLocaleDateString('th-TH', {year:'numeric', month:'long', day:'numeric'});
-    $('receiptBox').classList.add('show');
-    $('receiptBox').scrollIntoView({behavior:'smooth', block:'center'});
-
-    $('appForm').reset();
-    selectedFiles = [];
-    renderFileList();
-    clearAllFieldErrors();
-    renderCards(); 
-  }catch(err){
-    renderStatus('เกิดข้อผิดพลาด: ' + err.message, 'err');
-  }
-  $('submitBtn').disabled = false;
-}
-
-$('appForm').addEventListener('submit', handleSubmit);
-
-function deleteRecord(id) {
-    if (!confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) return;
-
-    const transaction = db.transaction(['users'], 'readwrite');
-    const store = transaction.objectStore('users');
-
-    store.delete(id).onsuccess = function() {
-        renderCards(); 
-    };
-}
-
-function deleteSelectedRecords() {
-    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
-    if (checkedBoxes.length === 0) {
-        alert('กรุณาเลือกรายการที่ต้องการลบอย่างน้อย 1 รายการ');
-        return;
+    function formatNumber(value) {
+      return new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(Number(value || 0));
     }
 
-    if (!confirm(`คุณต้องการลบรายการที่เลือกจำนวน ${checkedBoxes.length} รายการใช่หรือไม่?`)) return;
-
-    const selectedIds = Array.from(checkedBoxes).map(cb => Number(cb.value));
-    const transaction = db.transaction(['users'], 'readwrite');
-    const store = transaction.objectStore('users');
-
-    let completed = 0;
-    selectedIds.forEach(id => {
-        store.delete(id).onsuccess = function() {
-            completed++;
-            if (completed === selectedIds.length) {
-                renderCards();
-            }
-        };
-    });
-}
-
-function clearAllRecords() {
-    if (!confirm('⚠️ คุณแน่ใจหรือไม่ว่าจะลบข้อมูลทั้งหมด?')) return;
-
-    const transaction = db.transaction(['users'], 'readwrite');
-    const store = transaction.objectStore('users');
-
-    store.clear().onsuccess = function() {
-        renderCards(); 
-    };
-}
-
-function formatCSVValue(val) {
-    if (val === null || val === undefined) return '""';
-    let str = String(val).replace(/"/g, '""');
-    return `"=""${str}"""`;
-}
-
-function downloadCSVFile(csvContent, fileName) {
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-function exportAllToCSV() {
-    const transaction = db.transaction(['users'], 'readonly');
-    const store = transaction.objectStore('users');
-    const getAll = store.getAll();
-
-    getAll.onsuccess = function() {
-        const data = getAll.result;
-        if (!data || data.length === 0) {
-            alert('ยังไม่มีข้อมูลให้ดาวน์โหลด');
-            return;
-        }
-
-        const headers = ["ลำดับ", "เลขที่ใบสมัคร", "ชื่อ-นามสกุล", "ตำแหน่ง", "เบอร์โทร", "อีเมล", "วันเกิด", "ที่อยู่", "เงินเดือนที่คาดหวัง", "วุฒิการศึกษา", "ประสบการณ์ทำงาน", "วันที่ยื่น"];
-        let csv = headers.map(formatCSVValue).join(",") + "\n";
-
-        data.forEach((item, index) => {
-            const row = [
-                index + 1,
-                item.receiptNo || '-',
-                item.name || '-',
-                item.position || '-',
-                item.phone || '-',
-                item.email || '-',
-                item.dob || '-',
-                item.address || '-',
-                item.salary || '-',
-                item.education || '-',
-                item.experience || '-',
-                item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '-'
-            ];
-            csv += row.map(formatCSVValue).join(",") + "\n";
-        });
-
-        downloadCSVFile(csv, `ใบสมัครงานทั้งหมด_${new Date().toISOString().slice(0,10)}.csv`);
-    };
-}
-
-function exportRecordToCSV(id) {
-    const transaction = db.transaction(['users'], 'readonly');
-    const store = transaction.objectStore('users');
-    const getReq = store.get(id);
-
-    getReq.onsuccess = function() {
-        const item = getReq.result;
-        if (!item) {
-            alert('ไม่พบข้อมูลรายการนี้');
-            return;
-        }
-
-        const headers = ["ลำดับ", "เลขที่ใบสมัคร", "ชื่อ-นามสกุล", "ตำแหน่ง", "เบอร์โทร", "อีเมล", "วันเกิด", "ที่อยู่", "เงินเดือนที่คาดหวัง", "วุฒิการศึกษา", "ประสบการณ์ทำงาน", "วันที่ยื่น"];
-        let csv = headers.map(formatCSVValue).join(",") + "\n";
-
-        const row = [
-            1,
-            item.receiptNo || '-',
-            item.name || '-',
-            item.position || '-',
-            item.phone || '-',
-            item.email || '-',
-            item.dob || '-',
-            item.address || '-',
-            item.salary || '-',
-            item.education || '-',
-            item.experience || '-',
-            item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '-'
-        ];
-        csv += row.map(formatCSVValue).join(",") + "\n";
-
-        downloadCSVFile(csv, `ใบสมัคร_${item.receiptNo || item.id}.csv`);
-    };
-}
-
-function toggleSelectAll(master) {
-    const checkboxes = document.querySelectorAll('.row-checkbox');
-    checkboxes.forEach(cb => cb.checked = master.checked);
-}
-
-function exportSelectedToCSV() {
-    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
-    if (checkedBoxes.length === 0) {
-        alert('กรุณาติ๊กเลือกรายการที่ต้องการดาวน์โหลดอย่างน้อย 1 รายการ');
-        return;
+    function formatDate(isoValue) {
+      if (!isoValue) return "—";
+      const date = new Date(isoValue);
+      if (Number.isNaN(date.getTime())) return "—";
+      return new Intl.DateTimeFormat("th-TH", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+    }
+    
+    function formatDateTime(isoValue) {
+      if (!isoValue) return "—";
+      const date = new Date(isoValue);
+      if (Number.isNaN(date.getTime())) return "—";
+      return new Intl.DateTimeFormat("th-TH", { 
+        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" 
+      }).format(date);
     }
 
-    const selectedIds = Array.from(checkedBoxes).map(cb => Number(cb.value));
+    function toIsoDate(value) {
+      if (!value) return "";
+      return new Date(value + "T00:00:00").toISOString();
+    }
 
-    const transaction = db.transaction(['users'], 'readonly');
-    const store = transaction.objectStore('users');
-    const getAll = store.getAll();
+    function toDateInputValue(isoValue) {
+      if (!isoValue) return "";
+      const date = new Date(isoValue);
+      if (Number.isNaN(date.getTime())) return "";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return year + "-" + month + "-" + day;
+    }
 
-    getAll.onsuccess = function() {
-        const data = getAll.result.filter(item => selectedIds.includes(item.id));
+    function setSaving(isSaving) {
+      state.isSaving = isSaving;
+      saveButton.disabled = isSaving;
+      clearButton.disabled = isSaving;
+      Array.from(form.querySelectorAll(".field-control")).forEach((field) => {
+        field.disabled = isSaving || field.id === "total-qty";
+      });
+      saveButtonText.classList.toggle("hidden", isSaving);
+      saveLoading.classList.toggle("hidden", !isSaving);
+      saveLoading.classList.toggle("inline-flex", isSaving);
+    }
+
+    function filteredRecords() {
+      const term = searchInput.value.trim().toLocaleLowerCase("th-TH");
+      if (!term) return state.records;
+      return state.records.filter((record) => {
+        const searchable = [
+          record.asset_code, record.asset_name, record.department,
+          record.location, record.responsible_person, record.category
+        ].join(" ").toLocaleLowerCase("th-TH");
+        return searchable.includes(term);
+      });
+    }
+
+    function createRow(record) {
+      const fragment = rowTemplate.content.cloneNode(true);
+      const row = fragment.querySelector("tr");
+      row.dataset.rowId = record.__backendId;
+
+      row.querySelector(".row-code").textContent = record.asset_code || "—";
+      row.querySelector(".row-category").textContent = record.category || "ไม่ระบุหมวด";
+      row.querySelector(".row-name").textContent = record.asset_name || "—";
+      row.querySelector(".row-brand").textContent = record.brand_model || "ไม่ระบุยี่ห้อ/รุ่น";
+      row.querySelector(".row-department").textContent = record.department || "—";
+      row.querySelector(".row-location").textContent = record.location || "—";
+
+      const resultEl = row.querySelector(".row-result");
+      resultEl.textContent = record.inspection_result || "—";
+      resultEl.classList.add(record.inspection_result === "พบ" ? "badge-found" : "badge-missing");
+
+      const conditionEl = row.querySelector(".row-condition");
+      conditionEl.textContent = "สภาพ: " + (record.condition || "—");
+      conditionEl.classList.add(record.condition === "ปกติ" ? "text-emerald-700" : "text-amber-700");
+
+      row.querySelector(".row-qty").textContent = formatNumber(record.actual_qty);
+      
+      const goodQty = record.good_qty !== undefined ? record.good_qty : Math.max(0, Number(record.actual_qty || 0) - Number(record.damaged_qty || 0));
+      row.querySelector(".row-good-qty").textContent = formatNumber(goodQty);
+      row.querySelector(".row-damaged-qty").textContent = formatNumber(record.damaged_qty);
+
+      row.querySelector(".row-date").textContent = formatDate(record.inspection_date);
+      row.querySelector(".row-inspector").textContent = record.inspector || "—";
+
+      row.querySelector(".decrease-good-button").addEventListener("click", () => adjustQuantity(record.__backendId, "good_qty", -1, row));
+      row.querySelector(".increase-good-button").addEventListener("click", () => adjustQuantity(record.__backendId, "good_qty", 1, row));
+      row.querySelector(".decrease-damaged-button").addEventListener("click", () => adjustQuantity(record.__backendId, "damaged_qty", -1, row));
+      row.querySelector(".increase-damaged-button").addEventListener("click", () => adjustQuantity(record.__backendId, "damaged_qty", 1, row));
+
+      attachRowEvents(row, record.__backendId);
+      return row;
+    }
+
+    function updateRow(row, record) {
+      const freshRow = createRow(record);
+      row.replaceWith(freshRow);
+      lucide.createIcons();
+      return freshRow;
+    }
+
+    async function adjustQuantity(backendId, field, delta, row) {
+      const record = state.records.find((item) => item.__backendId === backendId);
+      if (!record || state.isSaving) return;
+      
+      const buttons = field === "good_qty"
+        ? row.querySelectorAll(".decrease-good-button, .increase-good-button")
+        : row.querySelectorAll(".decrease-damaged-button, .increase-damaged-button");
+      
+      const currentVal = field === "good_qty" ? (record.good_qty !== undefined ? record.good_qty : Math.max(0, record.actual_qty - record.damaged_qty)) : (record.damaged_qty || 0);
+      const nextQty = Math.max(0, Number(currentVal) + delta);
+
+      buttons.forEach((button) => { button.disabled = true; });
+      
+      let updatedData = { ...record };
+      updatedData[field] = nextQty;
+      
+      const updatedGood = field === "good_qty" ? nextQty : (record.good_qty !== undefined ? record.good_qty : Math.max(0, record.actual_qty - record.damaged_qty));
+      const updatedDamaged = field === "damaged_qty" ? nextQty : (record.damaged_qty || 0);
+      updatedData.actual_qty = updatedGood + updatedDamaged;
+
+      const result = await window.dataSdk.update(updatedData);
+      if (!result.isOk) {
+        setStatus(listStatus, "ไม่สามารถปรับจำนวนได้ กรุณาลองอีกครั้ง", "error");
+        buttons.forEach((button) => { button.disabled = false; });
+      }
+    }
+
+    // ฟังก์ชันเปิด Modal พร้อมจัดการข้อมูลประวัติ (History)
+    function openViewModal(record) {
+      // 1. นำข้อมูลล่าสุดมาแสดงในส่วนบน
+      document.getElementById("v-code").textContent = record.asset_code || "-";
+      document.getElementById("v-name").textContent = record.asset_name || "-";
+      document.getElementById("v-dept").textContent = record.department || "-";
+      document.getElementById("v-cat").textContent = record.category || "-";
+      document.getElementById("v-brand").textContent = record.brand_model || "-";
+      document.getElementById("v-loc").textContent = record.location || "-";
+      
+      document.getElementById("v-condition").textContent = record.condition || "-";
+      document.getElementById("v-result").textContent = record.inspection_result || "-";
+      
+      const dmg = record.damaged_qty ?? 0;
+      const act = record.actual_qty ?? 0;
+      const good = record.good_qty !== undefined ? record.good_qty : Math.max(0, act - dmg);
+      
+      document.getElementById("v-good").textContent = formatNumber(good);
+      document.getElementById("v-damaged").textContent = formatNumber(dmg);
+      document.getElementById("v-total").textContent = formatNumber(act);
+      document.getElementById("v-remarks").textContent = record.remarks || "ไม่มีหมายเหตุ";
+      
+      document.getElementById("v-inspector").textContent = record.inspector || "-";
+      document.getElementById("v-responsible").textContent = record.responsible_person || "-";
+      document.getElementById("v-date").textContent = formatDate(record.inspection_date);
+      document.getElementById("v-acq-date").textContent = formatDate(record.acquisition_date);
+      document.getElementById("v-rel-remarks").textContent = record.related_remarks || "ไม่มีบันทึกเพิ่มเติม";
+
+      // 2. จัดการส่วนแสดงประวัติการแก้ไข (History)
+      historyContainer.classList.add("hidden");
+      historyChevron.classList.remove("rotate-180");
+      
+      if (record.history && record.history.length > 0) {
+        historyBtn.classList.remove("hidden");
+        historyBtn.classList.add("flex");
         
-        const headers = ["ลำดับ", "เลขที่ใบสมัคร", "ชื่อ-นามสกุล", "ตำแหน่ง", "เบอร์โทร", "อีเมล", "วันเกิด", "ที่อยู่", "เงินเดือนที่คาดหวัง", "วุฒิการศึกษา", "ประสบการณ์ทำงาน", "วันที่ยื่น"];
-        let csv = headers.map(formatCSVValue).join(",") + "\n";
+        // เรียงลำดับเอาของใหม่สุดขึ้นก่อน
+        const historyHTML = [...record.history].reverse().map((hist, index) => {
+          const vGood = hist.good_qty !== undefined ? hist.good_qty : Math.max(0, (hist.actual_qty || 0) - (hist.damaged_qty || 0));
+          return `
+            <div class="bg-white border border-slate-200 rounded-xl p-4 text-sm shadow-sm relative overflow-hidden">
+              <div class="absolute left-0 top-0 bottom-0 w-1 bg-slate-300"></div>
+              <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-3 pb-2 border-b border-slate-100 gap-1 pl-2">
+                <span class="font-bold text-slate-700">เวอร์ชันที่ ${record.history.length - index}</span>
+                <span class="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">แก้ไขเมื่อ: ${formatDateTime(hist.__editedAt)}</span>
+              </div>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-y-3 gap-x-2 pl-2">
+                <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">สภาพ</span><strong class="text-slate-700">${hist.condition || "-"}</strong></div>
+                <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">ผลตรวจ</span><strong class="text-slate-700">${hist.inspection_result || "-"}</strong></div>
+                <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">ปกติ / ชำรุด</span><strong class="text-slate-700">${vGood} / ${hist.damaged_qty || 0}</strong></div>
+                <div><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">รวมทั้งหมด</span><strong class="text-teal-800 font-bold">${hist.actual_qty || 0}</strong></div>
+                <div class="col-span-2 md:col-span-4"><span class="block text-slate-400 text-[10px] uppercase mb-0.5 tracking-wider">หมายเหตุ</span><span class="text-slate-600">${hist.remarks || "ไม่มีหมายเหตุ"}</span></div>
+              </div>
+            </div>
+          `;
+        }).join("");
+        
+        historyContainer.innerHTML = historyHTML;
+        
+        // กำหนดการกดปุ่มกาง/หุบ ประวัติ
+        historyBtn.onclick = () => {
+          historyContainer.classList.toggle("hidden");
+          historyChevron.classList.toggle("rotate-180");
+        };
 
-        data.forEach((item, index) => {
-            const row = [
-                index + 1,
-                item.receiptNo || '-',
-                item.name || '-',
-                item.position || '-',
-                item.phone || '-',
-                item.email || '-',
-                item.dob || '-',
-                item.address || '-',
-                item.salary || '-',
-                item.education || '-',
-                item.experience || '-',
-                item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '-'
-            ];
-            csv += row.map(formatCSVValue).join(",") + "\n";
-        });
+      } else {
+        // ซ่อนปุ่มถ้าไม่เคยมีการแก้
+        historyBtn.classList.remove("flex");
+        historyBtn.classList.add("hidden");
+        historyContainer.innerHTML = "";
+      }
 
-        downloadCSVFile(csv, `ใบสมัคร_เลือก_${data.length}_รายการ.csv`);
+      viewModal.classList.remove("hidden");
+    }
+
+    closeModalBtn.addEventListener("click", () => { viewModal.classList.add("hidden"); });
+    viewModal.addEventListener("click", (e) => { if(e.target === viewModal) viewModal.classList.add("hidden"); });
+
+    function attachRowEvents(row, backendId) {
+      const viewButton = row.querySelector(".view-button");
+      const editButton = row.querySelector(".edit-button");
+      const deleteButton = row.querySelector(".delete-button");
+      const confirmation = row.querySelector(".confirm-delete");
+      const confirmButton = row.querySelector(".confirm-delete-button");
+      const cancelButton = row.querySelector(".cancel-delete-button");
+
+      viewButton.addEventListener("click", () => {
+        const record = state.records.find((item) => item.__backendId === backendId);
+        if (record) openViewModal(record);
+      });
+
+      editButton.addEventListener("click", () => {
+        const record = state.records.find((item) => item.__backendId === backendId);
+        if (!record) return;
+        
+        inputs.department.value = record.department || "";
+        inputs.assetCode.value = record.asset_code || "";
+        inputs.assetName.value = record.asset_name || "";
+        inputs.category.value = record.category || "";
+        inputs.brandModel.value = record.brand_model || "";
+        inputs.location.value = record.location || "";
+        inputs.condition.value = record.condition || "";
+        inputs.inspectionResult.value = record.inspection_result || "";
+        
+        const dmg = record.damaged_qty ?? 0;
+        const act = record.actual_qty ?? 0;
+        const good = record.good_qty !== undefined ? record.good_qty : Math.max(0, act - dmg);
+        
+        inputs.goodQty.value = good;
+        inputs.damagedQty.value = dmg;
+        inputs.totalQty.value = good + dmg;
+        
+        inputs.responsiblePerson.value = record.responsible_person || "";
+        inputs.inspector.value = record.inspector || "";
+        inputs.inspectionDate.value = toDateInputValue(record.inspection_date);
+        inputs.acquisitionDate.value = toDateInputValue(record.acquisition_date);
+        inputs.relatedRemarks.value = record.related_remarks || "";
+        inputs.remarks.value = record.remarks || "";
+        
+        state.editingId = backendId;
+        
+        form.scrollIntoView({ behavior: "smooth", block: "start" });
+        setStatus(formStatus, "โหลดข้อมูลสำหรับแก้ไขแล้ว กรุณาบันทึกเพื่อยืนยันการเปลี่ยนแปลง", "neutral");
+        
+        saveButton.classList.replace("bg-teal-800", "bg-amber-600");
+        saveButton.classList.replace("shadow-teal-800/20", "shadow-amber-600/20");
+        saveButtonText.textContent = "อัปเดตข้อมูล";
+      });
+
+      deleteButton.addEventListener("click", () => {
+        if (state.deletingId && state.deletingId !== backendId) {
+          const activeRow = listElement.querySelector('[data-row-id="' + state.deletingId + '"]');
+          if (activeRow) {
+            activeRow.querySelector(".delete-button").classList.remove("hidden");
+            activeRow.querySelector(".confirm-delete").classList.add("hidden");
+            activeRow.querySelector(".confirm-delete").classList.remove("flex");
+          }
+        }
+        state.deletingId = backendId;
+        deleteButton.classList.add("hidden");
+        confirmation.classList.remove("hidden");
+        confirmation.classList.add("flex");
+      });
+
+      cancelButton.addEventListener("click", () => {
+        state.deletingId = null;
+        deleteButton.classList.remove("hidden");
+        confirmation.classList.add("hidden");
+        confirmation.classList.remove("flex");
+      });
+
+      confirmButton.addEventListener("click", async () => {
+        const record = state.records.find((item) => item.__backendId === backendId);
+        if (!record) return;
+
+        confirmButton.disabled = true;
+        cancelButton.disabled = true;
+        confirmButton.textContent = "กำลังลบ...";
+        setStatus(listStatus, "กำลังลบรายการ...", "neutral");
+
+        try {
+          const result = await window.dataSdk.delete(record);
+          if (result.isOk) {
+            setStatus(listStatus, "ลบรายการเรียบร้อยแล้ว", "success");
+          } else {
+            setStatus(listStatus, "ไม่สามารถลบรายการได้ กรุณาลองอีกครั้ง", "error");
+            resetDeleteButtons();
+          }
+        } catch (error) {
+          setStatus(listStatus, "ไม่สามารถเชื่อมต่อเพื่อดำเนินการลบได้", "error");
+          resetDeleteButtons();
+        }
+
+        function resetDeleteButtons() {
+          confirmButton.disabled = false;
+          cancelButton.disabled = false;
+          confirmButton.textContent = "ใช่";
+        }
+      });
+    }
+
+    function renderRecords() {
+      const recordsToShow = filteredRecords();
+      const existingRows = new Map(
+        Array.from(listElement.querySelectorAll("tr")).map((row) => [row.dataset.rowId, row])
+      );
+
+      recordsToShow.forEach((record) => {
+        const existingRow = existingRows.get(record.__backendId);
+        if (existingRow) {
+          updateRow(existingRow, record);
+          existingRows.delete(record.__backendId);
+        } else {
+          listElement.appendChild(createRow(record));
+        }
+      });
+
+      existingRows.forEach((row) => row.remove());
+
+      const hasRecords = recordsToShow.length > 0;
+      emptyState.classList.toggle("hidden", hasRecords);
+      recordCount.textContent = String(state.records.length);
+
+      if (state.records.length === 0) {
+        setStatus(listStatus, "", "neutral");
+      } else if (recordsToShow.length === 0) {
+        setStatus(listStatus, "ไม่พบรายการที่ตรงกับคำค้นหา", "neutral");
+      } else {
+        setStatus(listStatus, "แสดง " + recordsToShow.length + " จาก " + state.records.length + " รายการ", "neutral");
+      }
+
+      lucide.createIcons();
+    }
+
+    function resetForm() {
+      state.editingId = null;
+      form.reset();
+      inputs.goodQty.value = "1";
+      inputs.damagedQty.value = "0";
+      inputs.totalQty.value = "1";
+      inputs.inspectionDate.value = toDateInputValue(new Date().toISOString());
+      setStatus(formStatus, "", "neutral");
+      
+      saveButton.classList.replace("bg-amber-600", "bg-teal-800");
+      saveButton.classList.replace("shadow-amber-600/20", "shadow-teal-800/20");
+      saveButtonText.textContent = "บันทึกข้อมูล";
+    }
+
+    clearButton.addEventListener("click", () => {
+      resetForm();
+      setStatus(formStatus, "ล้างข้อมูลในแบบฟอร์มแล้ว", "neutral");
+    });
+
+    searchInput.addEventListener("input", renderRecords);
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        setStatus(formStatus, "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน", "error");
+        return;
+      }
+
+      if (state.records.length >= 999 && !state.editingId) {
+        setStatus(formStatus, "มีรายการครบจำนวนสูงสุด 999 รายการแล้ว กรุณาลบรายการเดิมก่อนบันทึกเพิ่ม", "error");
+        return;
+      }
+
+      setSaving(true);
+      setStatus(formStatus, "กำลังบันทึกข้อมูลตรวจนับ...", "neutral");
+
+      const good = Number(inputs.goodQty.value || 0);
+      const damaged = Number(inputs.damagedQty.value || 0);
+
+      const record = {
+        department: inputs.department.value.trim(),
+        asset_code: inputs.assetCode.value.trim(),
+        asset_name: inputs.assetName.value.trim(),
+        category: inputs.category.value.trim(),
+        brand_model: inputs.brandModel.value.trim(),
+        location: inputs.location.value.trim(),
+        condition: inputs.condition.value,
+        inspection_result: inputs.inspectionResult.value,
+        
+        good_qty: good,
+        damaged_qty: damaged,
+        actual_qty: good + damaged,
+        
+        responsible_person: inputs.responsiblePerson.value.trim(),
+        inspector: inputs.inspector.value.trim(),
+        inspection_date: toIsoDate(inputs.inspectionDate.value),
+        acquisition_date: toIsoDate(inputs.acquisitionDate.value),
+        related_remarks: inputs.relatedRemarks.value.trim(),
+        remarks: inputs.remarks.value.trim()
+      };
+
+      try {
+        const editingRecord = state.editingId
+          ? state.records.find((item) => item.__backendId === state.editingId)
+          : null;
+        
+        const result = editingRecord
+          ? await window.dataSdk.update({ ...editingRecord, ...record })
+          : await window.dataSdk.create(record);
+          
+        if (result.isOk) {
+          resetForm();
+          setStatus(formStatus, editingRecord ? "แก้ไขข้อมูลและบันทึกทับรายการเดิมเรียบร้อยแล้ว" : "บันทึกข้อมูลตรวจนับเรียบร้อยแล้ว", "success");
+        } else {
+          setStatus(formStatus, "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองอีกครั้ง", "error");
+        }
+      } catch (error) {
+        setStatus(formStatus, "ไม่สามารถเชื่อมต่อเพื่อบันทึกข้อมูลได้", "error");
+      } finally {
+        setSaving(false);
+      }
+    });
+
+    const dataHandler = {
+      onDataChanged(data) {
+        state.records = Array.isArray(data)
+          ? [...data].sort((a, b) => new Date(b.inspection_date || 0) - new Date(a.inspection_date || 0))
+          : [];
+        state.deletingId = null;
+        renderRecords();
+      }
     };
-}
-</script>
+
+    async function initializeApp() {
+      resetForm();
+      lucide.createIcons();
+      setStatus(listStatus, "กำลังโหลดรายการตรวจนับ...", "neutral");
+
+      try {
+        const result = await window.dataSdk.init(dataHandler);
+        if (!result.isOk) {
+          setStatus(listStatus, "ไม่สามารถโหลดข้อมูลรายการตรวจนับได้", "error");
+        }
+      } catch (error) {
+        setStatus(listStatus, "ไม่สามารถเชื่อมต่อเพื่อโหลดข้อมูลได้", "error");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", initializeApp);
+  </script>
 </body>
 </html>
