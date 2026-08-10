@@ -188,7 +188,20 @@
               <div><label class="canva-text field-label" for="department">แผนก / หน่วยงาน</label> <input id="department" class="field-control" type="text" required></div>
               <div><label class="canva-text field-label" for="asset-code">รหัสครุภัณฑ์</label> <input id="asset-code" class="field-control" type="text" required></div>
               <div><label class="canva-text field-label" for="asset-name">ชื่อครุภัณฑ์</label> <input id="asset-name" class="field-control" type="text" required></div>
-              <div><label class="canva-text field-label" for="category">หมวดหมู่</label> <input id="category" class="field-control" type="text"></div>
+              
+              <!-- เปลี่ยนช่องหมวดหมู่ให้เป็นตัวเลือก -->
+              <div>
+                <label class="canva-text field-label" for="category">หมวดหมู่</label> 
+                <select id="category" class="field-control">
+                  <option value="">เลือกหมวดหมู่</option>
+                  <option value="1. ครุภัณฑ์สำนักงานทั่วไป (Office Funiture & Equipment)">1. ครุภัณฑ์สำนักงานทั่วไป (Office Funiture & Equipment)</option>
+                  <option value="2. ครุภัณฑ์คอมพิวเตอร์และเทคโนโลยีสารสนเทศ(IT & Computer Equipment)">2. ครุภัณฑ์คอมพิวเตอร์และเทคโนโลยีสารสนเทศ(IT & Computer Equipment)</option>
+                  <option value="3. ครุภัณฑ์งานพิมพ์และสำเนาเอกสาร(Printing & Copying Equipment)">3. ครุภัณฑ์งานพิมพ์และสำเนาเอกสาร(Printing & Copying Equipment)</option>
+                  <option value="4. ครุภัณฑ์ไฟฟ้าและเครื่องใช้ไฟฟ้าสำนักงาน(Electrical Appliances)">4. ครุภัณฑ์ไฟฟ้าและเครื่องใช้ไฟฟ้าสำนักงาน(Electrical Appliances)</option>
+                  <option value="5. ครุภัณฑ์โสตทัศนูปกรณ์และการสื่อสาร(Audio-Visual & Communication Equipment)">5. ครุภัณฑ์โสตทัศนูปกรณ์และการสื่อสาร(Audio-Visual & Communication Equipment)</option>
+                </select>
+              </div>
+
               <div><label class="canva-text field-label" for="brand-model">ยี่ห้อ / รุ่น</label> <input id="brand-model" class="field-control" type="text"></div>
               <div><label class="canva-text field-label" for="location">สถานที่ตั้ง</label> <input id="location" class="field-control" type="text"></div>
             </div>
