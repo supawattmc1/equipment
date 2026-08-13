@@ -349,7 +349,7 @@
             <h2 class="canva-text section-title font-bold text-xl text-red-900 flex items-center gap-2">
               <i data-lucide="trash-2" class="w-6 h-6"></i> ประวัติการลบ (ถังขยะ)
             </h2>
-            <p class="canva-text mt-1 text-sm text-red-700"></p>
+            <p class="canva-text mt-1 text-sm text-red-700">รายการที่ถูกลบชั่วคราว สามารถกู้คืนหรือลบออกจากระบบถาวรได้ที่นี่</p>
           </div>
           <button id="btn-back-main" class="canva-button bg-white border border-slate-300 text-slate-700 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold shadow-sm transition hover:bg-slate-50 focus:outline-none">
             <i data-lucide="arrow-left" class="w-4 h-4"></i> กลับหน้าหลัก
@@ -495,7 +495,7 @@
   </div>
 
   <script>
-     // ----------------------------------------------------
+    // ----------------------------------------------------
     // REAL BACKEND SDK (Google Sheets API)
     // ----------------------------------------------------
     const API_URL = "https://script.google.com/macros/s/AKfycbxcOQu6fxmMaju1pa3qn3zHsUWPRjsQkyXGcf2qu3r0w4oStf3Wk6hM52EhRQhsjW3h/exec"; 
@@ -531,7 +531,7 @@
           });
           const result = await res.json();
           if (result.status === 'success') {
-            this.mockData.unshift(result.record);
+            this.mockData.unshift(result.record || record);
             this.handler.onDataChanged(this.mockData);
             return { isOk: true };
           }
@@ -544,7 +544,10 @@
           const idx = this.mockData.findIndex(r => r.__backendId === record.__backendId);
           if (idx > -1) {
             const oldRecord = this.mockData[idx];
-            const currentHistory = oldRecord.history || [];
+            let currentHistory = oldRecord.history || [];
+            if (typeof currentHistory === 'string') {
+              try { currentHistory = JSON.parse(currentHistory); } catch (e) { currentHistory = []; }
+            }
             const snapshot = { ...oldRecord };
             delete snapshot.history;
             snapshot.__editedAt = new Date().toISOString(); 
@@ -642,7 +645,7 @@
       remarks: document.getElementById("remarks")
     };
 
-    // --- เพิ่ม Event Listeners ตรวจจับการกดเลือก "อื่นๆ" ---
+    // Event Listeners ตรวจจับการกดเลือก "อื่นๆ"
     inputs.department.addEventListener("change", () => {
       if (inputs.department.value === "อื่นๆ") {
         inputs.departmentOther.classList.remove("hidden");
@@ -898,7 +901,7 @@
             const childTr = document.createElement("tr");
             childTr.className = "child-row border-b border-teal-900/10 text-sm";
 
-            const goodQty = item.good_qty !== undefined ? item.good_qty : Math.max(0, Number(item.actual_qty || 0) - Number(item.damaged_qty || 0));
+            const goodQty = item.good_qty !== undefined ? Number(item.good_qty) : Math.max(0, Number(item.actual_qty || 0) - Number(item.damaged_qty || 0));
             const damagedQty = Number(item.damaged_qty || 0);
 
             childTr.innerHTML = `
@@ -984,9 +987,13 @@
 
     function openHistoryModal(item) {
       const historyContent = document.getElementById("history-modal-content");
-      const historyList = item.history || [];
+      let historyList = item.history || [];
 
-      if (historyList.length === 0) {
+      if (typeof historyList === 'string') {
+        try { historyList = JSON.parse(historyList); } catch(e) { historyList = []; }
+      }
+
+      if (!Array.isArray(historyList) || historyList.length === 0) {
         historyContent.innerHTML = `
           <div class="text-center py-8 text-slate-500">
             <div class="mx-auto w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2">
@@ -1132,7 +1139,7 @@
 
     async function updateItemQty(item, field, delta) {
       if (state.isSaving) return;
-      const currentGood = item.good_qty !== undefined ? item.good_qty : Math.max(0, Number(item.actual_qty || 0) - Number(item.damaged_qty || 0));
+      const currentGood = item.good_qty !== undefined ? Number(item.good_qty) : Math.max(0, Number(item.actual_qty || 0) - Number(item.damaged_qty || 0));
       const currentDmg = Number(item.damaged_qty || 0);
 
       let nextGood = currentGood;
@@ -1151,7 +1158,7 @@
       await window.dataSdk.update(updated);
     }
 
-    // --- ปรับแต่งฟังก์ชันสำหรับการแก้ไขข้อมูลเมื่อมีการเลือก "อื่นๆ" ---
+    // ฟังก์ชันสำหรับดึงข้อมูลลงแบบฟอร์มเพื่อแก้ไข
     function populateFormForEdit(record) {
       // ตรวจสอบข้อมูลแผนก
       const deptOptionExists = Array.from(inputs.department.options).some(opt => opt.value === record.department);
@@ -1184,9 +1191,9 @@
       inputs.condition.value = record.condition || "";
       inputs.inspectionResult.value = record.inspection_result || "";
       
-      const dmg = record.damaged_qty ?? 0;
-      const act = record.actual_qty ?? 0;
-      const good = record.good_qty !== undefined ? record.good_qty : Math.max(0, act - dmg);
+      const dmg = Number(record.damaged_qty || 0);
+      const act = Number(record.actual_qty || 0);
+      const good = record.good_qty !== undefined ? Number(record.good_qty) : Math.max(0, act - dmg);
       
       inputs.goodQty.value = good;
       inputs.damagedQty.value = dmg;
@@ -1196,7 +1203,7 @@
       inputs.inspector.value = record.inspector || "";
       inputs.inspectionDate.value = toDateInputValue(record.inspection_date);
       inputs.acquisitionDate.value = toDateInputValue(record.acquisition_date);
-      inputs.relatedRemarks.value = record.related_remarks || "";
+      inputs.relatedRemarks.value = record.related_remarks || record.relatedRemarks || "";
       inputs.remarks.value = record.remarks || "";
       
       state.editingId = record.__backendId;
@@ -1291,7 +1298,7 @@
       const good = Number(inputs.goodQty.value || 0);
       const damaged = Number(inputs.damagedQty.value || 0);
 
-      // --- ดึงค่าแผนกและหมวดหมู่ (หากเลือกอื่นๆ ให้เอาค่าจากช่องพิมพ์) ---
+      // ดึงค่าแผนกและหมวดหมู่ (หากเลือกอื่นๆ ให้เอาค่าจากช่องพิมพ์)
       const selectedDept = inputs.department.value === "อื่นๆ" 
         ? (inputs.departmentOther.value.trim() || "อื่นๆ")
         : inputs.department.value.trim();
@@ -1318,7 +1325,7 @@
         inspector: inputs.inspector.value.trim(),
         inspection_date: toIsoDate(inputs.inspectionDate.value),
         acquisition_date: toIsoDate(inputs.acquisitionDate.value),
-        relatedRemarks: inputs.relatedRemarks.value.trim(),
+        related_remarks: inputs.relatedRemarks.value.trim(),
         remarks: inputs.remarks.value.trim(),
         
         is_deleted: false,
@@ -1352,8 +1359,18 @@
       onDataChanged(data) {
         if (!Array.isArray(data)) data = [];
         
-        const active = data.filter(r => r.is_deleted !== true && r.is_deleted !== 'true');
-        const deleted = data.filter(r => r.is_deleted === true || r.is_deleted === 'true');
+        // ฟังก์ชันช่วยแยกสถานะการลบให้ยืดหยุ่น ยอมรับทั้ง boolean, String true/FALSE และเลข 1
+        const isDeletedVal = (r) => {
+          if (r.is_deleted === true) return true;
+          if (typeof r.is_deleted === 'string') {
+            const v = r.is_deleted.toLowerCase().trim();
+            return v === 'true' || v === '1';
+          }
+          return false;
+        };
+
+        const active = data.filter(r => !isDeletedVal(r));
+        const deleted = data.filter(r => isDeletedVal(r));
 
         state.records = active.sort((a, b) => new Date(b.inspection_date || 0) - new Date(a.inspection_date || 0));
         state.deletedRecords = deleted.sort((a, b) => new Date(b.deleted_at || 0) - new Date(a.deleted_at || 0));
